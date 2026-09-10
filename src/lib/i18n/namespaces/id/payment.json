@@ -57,5 +57,32 @@
       "proof_uploaded": "Bukti berhasil diunggah!"
     },
     "detail_invoice": "Detail Invoice"
+  },
+  "duitku": {
+    "M2": "Bayar dari ATM, mobile banking, atau internet banking Mandiri.",
+    "VA": "Bayar melalui kanal Virtual Account Maybank.",
+    "I1": "Bayar melalui kanal Virtual Account BNI.",
+    "B1": "Bayar melalui kanal Virtual Account CIMB Niaga.",
+    "BT": "Bayar melalui kanal Virtual Account Permata Bank.",
+    "A1": "Bayar dari bank yang terhubung jaringan ATM Bersama.",
+    "AG": "Bayar melalui kanal Virtual Account Bank Artha Graha.",
+    "NC": "Bayar melalui kanal Virtual Account Bank Neo Commerce.",
+    "BR": "Bayar melalui ATM, BRImo, atau internet banking BRI.",
+    "S1": "Bayar melalui kanal Virtual Account Bank Sahabat Sampoerna.",
+    "DM": "Bayar melalui kanal Virtual Account Danamon.",
+    "BV": "Bayar melalui kanal Virtual Account Bank Victoria.",
+    "BC": "Bayar melalui ATM, myBCA, BCA mobile, atau KlikBCA.",
+    "FT": "Bayar melalui outlet ritel yang tersedia di checkout Duitku.",
+    "IR": "Bayar tunai di gerai Indomaret.",
+    "OV": "Bayar menggunakan saldo atau aplikasi OVO.",
+    "SA": "Bayar menggunakan aplikasi Shopee atau ShopeePay.",
+    "SP": "Bayar dengan scan QRIS dari aplikasi yang mendukung.",
+    "LQ": "Bayar dengan scan QRIS melalui LinkAja.",
+    "NQ": "Bayar dengan scan QRIS dari aplikasi yang mendukung.",
+    "DA": "Bayar menggunakan saldo atau aplikasi DANA.",
+    "LA": "Bayar menggunakan saldo atau aplikasi LinkAja.",
+    "VC": "Bayar menggunakan kartu kredit melalui checkout Duitku.",
+    "generic_name": "Metode Pembayaran Duitku",
+    "generic_desc": "Kode channel {code}. Detail pembayaran akan tampil di checkout Duitku."
   }
 }

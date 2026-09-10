@@ -28,79 +28,31 @@
   let statusCheckAttempts = 0;
   const STATUS_CHECK_INTERVAL_MS = 3000;
   const MAX_STATUS_CHECK_ATTEMPTS = 20;
-  const DUITKU_PAYMENT_METHODS: Record<string, { name: string; description: string }> = {
-    M2: {
-      name: 'Mandiri Virtual Account',
-      description: 'Bayar dari ATM, mobile banking, atau internet banking Mandiri.',
-    },
-    VA: {
-      name: 'Maybank Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Maybank.',
-    },
-    I1: { name: 'BNI Virtual Account', description: 'Bayar melalui kanal Virtual Account BNI.' },
-    B1: {
-      name: 'CIMB Niaga Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account CIMB Niaga.',
-    },
-    BT: {
-      name: 'Permata Bank Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Permata Bank.',
-    },
-    A1: {
-      name: 'ATM Bersama',
-      description: 'Bayar dari bank yang terhubung jaringan ATM Bersama.',
-    },
-    AG: {
-      name: 'Bank Artha Graha Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Bank Artha Graha.',
-    },
-    NC: {
-      name: 'Bank Neo Commerce Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Bank Neo Commerce.',
-    },
-    BR: {
-      name: 'BRI Virtual Account (BRIVA)',
-      description: 'Bayar melalui ATM, BRImo, atau internet banking BRI.',
-    },
-    S1: {
-      name: 'Bank Sahabat Sampoerna Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Bank Sahabat Sampoerna.',
-    },
-    DM: {
-      name: 'Danamon Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Danamon.',
-    },
-    BV: {
-      name: 'Bank Victoria Virtual Account',
-      description: 'Bayar melalui kanal Virtual Account Bank Victoria.',
-    },
-    BC: {
-      name: 'BCA Virtual Account',
-      description: 'Bayar melalui ATM, myBCA, BCA mobile, atau KlikBCA.',
-    },
-    FT: {
-      name: 'Retail Outlet',
-      description: 'Bayar melalui outlet ritel yang tersedia di checkout Duitku.',
-    },
-    IR: { name: 'Indomaret', description: 'Bayar tunai di gerai Indomaret.' },
-    OV: { name: 'OVO', description: 'Bayar menggunakan saldo atau aplikasi OVO.' },
-    SA: {
-      name: 'ShopeePay Apps',
-      description: 'Bayar menggunakan aplikasi Shopee atau ShopeePay.',
-    },
-    SP: {
-      name: 'ShopeePay QRIS',
-      description: 'Bayar dengan scan QRIS dari aplikasi yang mendukung.',
-    },
-    LQ: { name: 'LinkAja QRIS', description: 'Bayar dengan scan QRIS melalui LinkAja.' },
-    NQ: { name: 'Nobu QRIS', description: 'Bayar dengan scan QRIS dari aplikasi yang mendukung.' },
-    DA: { name: 'DANA', description: 'Bayar menggunakan saldo atau aplikasi DANA.' },
-    LA: { name: 'LinkAja', description: 'Bayar menggunakan saldo atau aplikasi LinkAja.' },
-    VC: {
-      name: 'Kartu Kredit',
-      description: 'Bayar menggunakan kartu kredit melalui checkout Duitku.',
-    },
-  };
+  const DUITKU_PAYMENT_METHODS: Record<string, { name: string; description: string }> = $derived({
+    M2: { name: 'Mandiri Virtual Account', description: $t('payment.duitku.M2') },
+    VA: { name: 'Maybank Virtual Account', description: $t('payment.duitku.VA') },
+    I1: { name: 'BNI Virtual Account', description: $t('payment.duitku.I1') },
+    B1: { name: 'CIMB Niaga Virtual Account', description: $t('payment.duitku.B1') },
+    BT: { name: 'Permata Bank Virtual Account', description: $t('payment.duitku.BT') },
+    A1: { name: 'ATM Bersama', description: $t('payment.duitku.A1') },
+    AG: { name: 'Bank Artha Graha Virtual Account', description: $t('payment.duitku.AG') },
+    NC: { name: 'Bank Neo Commerce Virtual Account', description: $t('payment.duitku.NC') },
+    BR: { name: 'BRI Virtual Account (BRIVA)', description: $t('payment.duitku.BR') },
+    S1: { name: 'Bank Sahabat Sampoerna Virtual Account', description: $t('payment.duitku.S1') },
+    DM: { name: 'Danamon Virtual Account', description: $t('payment.duitku.DM') },
+    BV: { name: 'Bank Victoria Virtual Account', description: $t('payment.duitku.BV') },
+    BC: { name: 'BCA Virtual Account', description: $t('payment.duitku.BC') },
+    FT: { name: 'Retail Outlet', description: $t('payment.duitku.FT') },
+    IR: { name: 'Indomaret', description: $t('payment.duitku.IR') },
+    OV: { name: 'OVO', description: $t('payment.duitku.OV') },
+    SA: { name: 'ShopeePay Apps', description: $t('payment.duitku.SA') },
+    SP: { name: 'ShopeePay QRIS', description: $t('payment.duitku.SP') },
+    LQ: { name: 'LinkAja QRIS', description: $t('payment.duitku.LQ') },
+    NQ: { name: 'Nobu QRIS', description: $t('payment.duitku.NQ') },
+    DA: { name: 'DANA', description: $t('payment.duitku.DA') },
+    LA: { name: 'LinkAja', description: $t('payment.duitku.LA') },
+    VC: { name: 'Kartu Kredit', description: $t('payment.duitku.VC') },
+  });
   let manualInstructions = $state('');
   let publicSettings = $state<any>({});
   let returnPath = $derived($user?.role === 'admin' ? '/admin/subscription' : '/dashboard');
@@ -202,8 +154,8 @@
     const normalizedCode = String(code).trim().toUpperCase();
     return (
       DUITKU_PAYMENT_METHODS[normalizedCode] || {
-        name: `Metode Pembayaran Duitku`,
-        description: `Kode channel ${normalizedCode}. Detail pembayaran akan tampil di checkout Duitku.`,
+        name: $t('payment.duitku.generic_name'),
+        description: $t('payment.duitku.generic_desc', { values: { code: normalizedCode } }),
       }
     );
   }

@@ -1149,7 +1149,9 @@
       "settings": "Pengaturan"
     },
     "backup_queued": "Global backup queued",
-    "backup_fail": "Gagal mengantrekan global backup"
+    "backup_fail": "Gagal mengantrekan global backup",
+    "tenant_queued": "Backup tenant diantrekan",
+    "tenant_fail": "Gagal mengantrekan backup tenant"
   },
   "plans": {
     "page_title": "Paket | Superadmin",

@@ -1189,7 +1189,10 @@
         "hint_missing": "listed in the app, missing on the device",
         "delete_msg": "Account \"{u}\" will be removed from the app. Run \"Apply to router\" if it also needs deleting from the device.",
         "hint_top_router": "most: {name} ({n})",
-        "hint_no_router": "no routers yet"
+        "hint_no_router": "no routers yet",
+        "t_created_applied": "Account created and applied to the router.",
+        "t_created": "PPPoE account created.",
+        "t_saved_apply_fail": "Saved, but auto-apply failed:"
       }
     },
     "dhcp_static": {
@@ -2264,7 +2267,9 @@
         "t_mapcreated": "Mapping created.",
         "t_radius_applied": "RADIUS configuration applied.",
         "col_time": "Time",
-        "metrics_hint": "Metrics collect at every monitoring interval."
+        "metrics_hint": "Metrics collect at every monitoring interval.",
+        "tab_interfaces": "Interfaces",
+        "tab_ip": "IP Address"
       },
       "v2list": {
         "desc": "MikroTik devices under monitoring. Status is computed from active state, data age, and maintenance window.",

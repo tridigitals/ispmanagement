@@ -1149,7 +1149,9 @@
       "settings": "Settings"
     },
     "backup_queued": "Global backup queued",
-    "backup_fail": "Failed to queue global backup"
+    "backup_fail": "Failed to queue global backup",
+    "tenant_queued": "Tenant backups queued",
+    "tenant_fail": "Failed to queue tenant backups"
   },
   "plans": {
     "page_title": "Plans | Superadmin",

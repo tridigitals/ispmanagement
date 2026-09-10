@@ -930,10 +930,10 @@
         'true',
         'Manual trigger for tenant backups',
       );
-      toast.success('Tenant backups queued');
+      toast.success(getStore(t)('superadmin.settings.tenant_queued'));
     } catch (err) {
       console.error('Failed to trigger tenant backups:', err);
-      toast.error('Failed to queue tenant backups');
+      toast.error(getStore(t)('superadmin.settings.tenant_fail'));
     }
   }
 </script>

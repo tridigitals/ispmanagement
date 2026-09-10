@@ -916,7 +916,10 @@
         "hint_missing": "terdaftar di aplikasi, tidak ada di perangkat",
         "delete_msg": "Akun \"{u}\" akan dihapus dari aplikasi. Jalankan \"Terapkan ke router\" bila akun juga perlu dihapus dari perangkat.",
         "hint_top_router": "terbanyak {name} ({n})",
-        "hint_no_router": "belum ada router"
+        "hint_no_router": "belum ada router",
+        "t_created_applied": "Akun dibuat dan diterapkan ke router.",
+        "t_created": "Akun PPPoE dibuat.",
+        "t_saved_apply_fail": "Tersimpan, tapi gagal diterapkan otomatis:"
       }
     },
     "dhcp_static": {
@@ -1991,7 +1994,9 @@
         "t_mapcreated": "Mapping dibuat.",
         "t_radius_applied": "Konfigurasi RADIUS diterapkan.",
         "col_time": "Waktu",
-        "metrics_hint": "Metrik akan terkumpul tiap interval pemantauan."
+        "metrics_hint": "Metrik akan terkumpul tiap interval pemantauan.",
+        "tab_interfaces": "Antarmuka",
+        "tab_ip": "Alamat IP"
       },
       "v2list": {
         "desc": "Perangkat MikroTik yang dipantau. Status dihitung dari status aktif, umur data, dan jendela pemeliharaan.",

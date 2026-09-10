@@ -165,8 +165,8 @@
 
   const tabItems = $derived([
     { id: 'overview', label: $t('admin.network.routers.v2d.tab_overview') },
-    { id: 'interfaces', label: 'Interfaces', count: snapshot?.interfaces?.length || 0 },
-    { id: 'ip', label: 'IP Address', count: snapshot?.ip_addresses?.length || 0 },
+    { id: 'interfaces', label: $t('admin.network.routers.v2d.tab_interfaces'), count: snapshot?.interfaces?.length || 0 },
+    { id: 'ip', label: $t('admin.network.routers.v2d.tab_ip'), count: snapshot?.ip_addresses?.length || 0 },
     { id: 'metrics', label: $t('admin.network.routers.v2d.tab_metrics') },
   ]);
 

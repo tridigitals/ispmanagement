@@ -57,5 +57,32 @@
       "proof_uploaded": "Proof uploaded successfully!"
     },
     "detail_invoice": "Invoice Details"
+  },
+  "duitku": {
+    "M2": "Pay via Mandiri ATM, mobile banking, or internet banking.",
+    "VA": "Pay through the Maybank Virtual Account channel.",
+    "I1": "Pay through the BNI Virtual Account channel.",
+    "B1": "Pay through the CIMB Niaga Virtual Account channel.",
+    "BT": "Pay through the Permata Bank Virtual Account channel.",
+    "A1": "Pay from any bank connected to the ATM Bersama network.",
+    "AG": "Pay through the Bank Artha Graha Virtual Account channel.",
+    "NC": "Pay through the Bank Neo Commerce Virtual Account channel.",
+    "BR": "Pay via BRI ATM, BRImo, or internet banking.",
+    "S1": "Pay through the Bank Sahabat Sampoerna Virtual Account channel.",
+    "DM": "Pay through the Danamon Virtual Account channel.",
+    "BV": "Pay through the Bank Victoria Virtual Account channel.",
+    "BC": "Pay via ATM, myBCA, or BCA mobile.",
+    "FT": "Pay at available retail outlets.",
+    "IR": "Pay in cash at an Indomaret store.",
+    "OV": "Pay using your OVO balance or app.",
+    "SA": "Pay using the Shopee app or ShopeePay.",
+    "SP": "Pay by scanning the QRIS code from any supporting app.",
+    "LQ": "Pay by scanning QRIS via LinkAja.",
+    "NQ": "Pay by scanning the QRIS code from any supporting app.",
+    "DA": "Pay using your DANA balance or app.",
+    "LA": "Pay using your LinkAja balance or app.",
+    "VC": "Pay by credit card through the Duitku checkout.",
+    "generic_name": "Duitku Payment Method",
+    "generic_desc": "Channel code {code}. Payment details will appear in the Duitku checkout."
   }
 }

@@ -244,13 +244,13 @@
           }),
         apply: (id) => api.pppoe.accounts.apply(id),
       });
-      toast.success(result.applySucceeded ? 'Akun dibuat dan diterapkan ke router.' : 'Akun PPPoE dibuat.');
+      toast.success(result.applySucceeded ? $t('admin.customers.pppoe.v2.t_created_applied') : $t('admin.customers.pppoe.v2.t_created'));
       showCreate = false;
       await load();
     } catch (e: unknown) {
       if (e instanceof PppoeCreateApplyError) {
         toast.error(
-          'Tersimpan, tapi gagal diterapkan otomatis: ' + extractApiErrorMessage(e.applyError ?? e),
+          $t('admin.customers.pppoe.v2.t_saved_apply_fail') + ' ' + extractApiErrorMessage(e.applyError ?? e),
         );
         showCreate = false;
         await load();
