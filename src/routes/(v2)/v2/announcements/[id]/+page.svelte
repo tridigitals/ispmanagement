@@ -8,6 +8,7 @@
   import { page } from '$app/stores';
   import { api, type Announcement } from '$lib/api/client';
   import { toast } from '$lib/stores/toast';
+  import { t } from 'svelte-i18n';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
   import AnnouncementDetailView from '$lib/components/announcements/AnnouncementDetailView.svelte';
 
@@ -33,7 +34,7 @@
   });
 </script>
 
-<PortalShell title="Pengumuman">
+<PortalShell title={ $t('announcements.title') }>
   <AnnouncementDetailView
     announcement={ann}
     {loading}
