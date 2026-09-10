@@ -103,7 +103,7 @@
 
   async function sendReply() {
     if (isClosed) {
-      toast.error('Tiket sudah ditutup.');
+      toast.error($t('support.detail_v2.closed_toast'));
       return;
     }
     if (!message.trim()) return;
@@ -121,17 +121,17 @@
         : detail;
       message = '';
       attachments = [];
-      toast.success('Balasan terkirim.');
+      toast.success($t('support.detail_v2.replied'));
       await load();
     } catch (e: any) {
-      toast.error(`Gagal mengirim: ${e?.message || e}`);
+      toast.error($t('support.detail_v2.reply_fail', { values: { msg: e?.message || e } }));
     } finally {
       sending = false;
     }
   }
 </script>
 
-<PortalShell title="Detail tiket">
+<PortalShell title={ $t('support.detail_v2.title') }>
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <Button variant="ghost" size="sm" icon="chevronLeft" onclick={goBack}>{ $t('components.detail_header.back') }</Button>
     <span class="font-mono text-xs text-ink-400">#{id.slice(0, 8)}</span>
@@ -141,7 +141,7 @@
   </div>
 
   {#if loading}
-    <Card title="Memuat…"><p class="text-sm text-ink-500">Mengambil detail tiket…</p></Card>
+    <Card title={ $t('support.detail_v2.loading') }><p class="text-sm text-ink-500">{ $t('support.detail_v2.loading_fetch') }</p></Card>
   {:else if detail}
     {@const d = detail}
     <Card title={d.ticket.subject}>
@@ -190,8 +190,8 @@
 
       {#if isClosed}
         <div class="mt-4 flex items-center gap-2 rounded-lg border border-ink-200 bg-ink-50 px-3 py-2.5 text-sm text-ink-600">
-          <Badge tone="positive" label="Selesai" />
-          Tiket sudah ditutup.
+          <Badge tone="positive" label={ $t('support.detail_v2.done_badge') } />
+          { $t('support.detail_v2.closed_note') }
           {#if d.ticket.satisfaction_rating}
             <span class="ml-auto text-xs text-ink-400">
               Penilaian: {d.ticket.satisfaction_rating}/5
@@ -205,7 +205,7 @@
             rows="3"
             value={message}
             oninput={(e) => (message = (e.currentTarget as HTMLTextAreaElement).value)}
-            placeholder="Tulis balasan…"
+            placeholder={ $t('support.detail_v2.reply_ph') }
           ></textarea>
           <div class="flex flex-wrap items-center gap-3">
             <label class="text-xs text-ink-500">

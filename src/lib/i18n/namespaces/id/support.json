@@ -144,5 +144,16 @@
     "p_urgent2": "Urgent",
     "refresh": "Segarkan",
     "created": "dibuat"
+  },
+  "detail_v2": {
+    "title": "Detail tiket",
+    "loading": "Memuat…",
+    "loading_fetch": "Mengambil detail tiket…",
+    "closed_toast": "Tiket sudah ditutup.",
+    "replied": "Balasan terkirim.",
+    "done_badge": "Selesai",
+    "closed_note": "Tiket sudah ditutup.",
+    "reply_ph": "Tulis balasan…",
+    "reply_fail": "Gagal mengirim: {msg}"
   }
 }

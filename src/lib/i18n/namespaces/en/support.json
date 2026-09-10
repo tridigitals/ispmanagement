@@ -144,5 +144,16 @@
     "p_urgent2": "Urgent",
     "refresh": "Refresh",
     "created": "created"
+  },
+  "detail_v2": {
+    "title": "Ticket detail",
+    "loading": "Loading…",
+    "loading_fetch": "Fetching ticket details…",
+    "closed_toast": "This ticket is closed.",
+    "replied": "Reply sent.",
+    "done_badge": "Done",
+    "closed_note": "Ticket closed.",
+    "reply_ph": "Write a reply…",
+    "reply_fail": "Failed to send: {msg}"
   }
 }
