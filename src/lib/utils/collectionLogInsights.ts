@@ -4,15 +4,15 @@
  * Label aksi/hasil/status/pengingat + tone pill dulu inline `$t()` di
  * halaman legacy — kini pemetaan murni + tes.
  */
-export function collectionActionLabel(action: string): string {
+export function collectionActionLabel(action: string, tt?: (k: string) => string): string {
   const x = String(action || '').toLowerCase();
-  if (x === 'reminder') return 'Pengingat';
+  if (x === 'reminder') return tt?.('admin.billing_collection.v2.act.reminder') ?? 'Pengingat';
   if (x === 'suspend') return 'Suspend';
-  if (x === 'grace_expire_suspend') return 'Suspend grace habis';
-  if (x === 'resume') return 'Aktif lagi';
-  if (x === 'installation') return 'Aktivasi instalasi';
-  if (x === 'assignment') return 'Assign layanan';
-  if (x === 'payment_callback') return 'Callback pembayaran';
+  if (x === 'grace_expire_suspend') return tt?.('admin.billing_collection.v2.act.grace') ?? 'Suspend grace habis';
+  if (x === 'resume') return tt?.('admin.billing_collection.v2.act.resume') ?? 'Aktif lagi';
+  if (x === 'installation') return tt?.('admin.billing_collection.v2.act.installation') ?? 'Aktivasi instalasi';
+  if (x === 'assignment') return tt?.('admin.billing_collection.v2.act.assignment') ?? 'Assign layanan';
+  if (x === 'payment_callback') return tt?.('admin.billing_collection.v2.act.callback') ?? 'Callback pembayaran';
   return action || '—';
 }
 
@@ -24,23 +24,23 @@ export function collectionActionTone(action: string): 'positive' | 'negative' | 
   return 'warning';
 }
 
-export function collectionActionHint(action: string): string {
+export function collectionActionHint(action: string, tt?: (k: string) => string): string {
   const x = String(action || '').toLowerCase();
-  if (x === 'reminder') return 'Pengingat invoice dikirim atau dijadwalkan';
-  if (x === 'suspend') return 'Suspend sesuai policy billing aktif';
-  if (x === 'grace_expire_suspend') return 'Suspend setelah masa tenggang berakhir';
-  if (x === 'resume') return 'Layanan aktif lagi setelah pembayaran diterima';
-  if (x === 'installation') return 'Invoice instalasi dibayar, layanan siap diaktifkan';
-  if (x === 'assignment') return 'Runner menemukan assignment atau relasi layanan';
-  if (x === 'payment_callback') return 'Status invoice diperbarui dari callback pembayaran';
-  return 'Aktivitas scheduler billing';
+  if (x === 'reminder') return tt?.('admin.billing_collection.v2.hint.reminder') ?? 'Pengingat invoice dikirim atau dijadwalkan';
+  if (x === 'suspend') return tt?.('admin.billing_collection.v2.hint.suspend') ?? 'Suspend sesuai policy billing aktif';
+  if (x === 'grace_expire_suspend') return tt?.('admin.billing_collection.v2.hint.grace') ?? 'Suspend setelah masa tenggang berakhir';
+  if (x === 'resume') return tt?.('admin.billing_collection.v2.hint.resume') ?? 'Layanan aktif lagi setelah pembayaran diterima';
+  if (x === 'installation') return tt?.('admin.billing_collection.v2.hint.installation') ?? 'Invoice instalasi dibayar, layanan siap diaktifkan';
+  if (x === 'assignment') return tt?.('admin.billing_collection.v2.hint.assignment') ?? 'Runner menemukan assignment atau relasi layanan';
+  if (x === 'payment_callback') return tt?.('admin.billing_collection.v2.hint.callback') ?? 'Status invoice diperbarui dari callback pembayaran';
+  return tt?.('admin.billing_collection.v2.hint.other') ?? 'Aktivitas scheduler billing';
 }
 
-export function collectionResultLabel(result: string): string {
+export function collectionResultLabel(result: string, tt?: (k: string) => string): string {
   const x = String(result || '').toLowerCase();
-  if (x === 'success' || x === 'sent') return 'Berhasil';
-  if (x === 'failed') return 'Gagal';
-  if (x === 'skipped' || x === 'queued') return 'Dilewati';
+  if (x === 'success' || x === 'sent') return tt?.('admin.billing_collection.results.success') ?? 'Berhasil';
+  if (x === 'failed') return tt?.('admin.billing_collection.results.failed') ?? 'Gagal';
+  if (x === 'skipped' || x === 'queued') return tt?.('admin.billing_collection.results.skipped') ?? 'Dilewati';
   return result || '—';
 }
 

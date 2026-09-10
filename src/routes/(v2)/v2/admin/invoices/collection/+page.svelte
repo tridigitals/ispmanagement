@@ -23,6 +23,7 @@
     toIsoUtc,
   } from '$lib/utils/collectionLogInsights';
   import { loadCollectionExportModule } from '../../../../../(app)/admin/invoices/collection/collectionPageModules';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     Badge,
@@ -184,7 +185,7 @@
     runningNow = true;
     try {
       lastRunResult = await api.payment.runBillingCollectionNow();
-      toast.success('Penagihan manual selesai.');
+      toast.success($t('admin.billing_collection.v2.t_run'));
       await Promise.all([loadCollection(), loadReminders()]);
     } catch (e) {
       toast.error(extractApiErrorMessage(e) || 'Gagal jalankan penagihan.');
@@ -227,10 +228,10 @@
       activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs',
     );
     if (!ok) {
-      toast.error('Tidak ada data untuk diekspor.');
+      toast.error($t('admin.billing_collection.v2.t_nodata'));
       return;
     }
-    toast.success('Ekspor selesai.');
+    toast.success($t('admin.billing_collection.v2.t_export'));
   }
 
   async function exportExcel() {
@@ -242,10 +243,10 @@
       activeTab === 'collection' ? 'billing-collection-logs' : 'invoice-reminder-logs',
     );
     if (!ok) {
-      toast.error('Tidak ada data untuk diekspor.');
+      toast.error($t('admin.billing_collection.v2.t_nodata'));
       return;
     }
-    toast.success('Ekspor selesai.');
+    toast.success($t('admin.billing_collection.v2.t_export'));
   }
 
   function buildCollectionExportRows() {
@@ -273,11 +274,11 @@
     }));
   }
 </script>
-<AppShell title="Log penagihan">
+<AppShell title={ $t('admin.billing_collection.v2.tab1') }>
   <PageHeader
-    title="Log penagihan"
-    eyebrow="Invoice"
-    desc="Jejak scheduler billing: pengingat, suspend, aktif-lagi, dan callback."
+    title={ $t('admin.billing_collection.v2.tab1') }
+    eyebrow={ $t('admin.billing_collection.columns.invoice') }
+    desc={ $t('admin.billing_collection.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void refreshCurrent()} disabled={currentLoading || runningNow}>
@@ -285,29 +286,29 @@
       </Button>
       {#if canManageBilling}
         <Button variant="primary" icon="zap" loading={runningNow} onclick={() => void runCollectionNow()} disabled={runningNow || currentLoading}>
-          {runningNow ? 'Menjalankan…' : 'Jalankan sekarang'}
+          {runningNow ? 'Menjalankan…' : $t('admin.billing_collection.actions.run_now')}
         </Button>
       {/if}
       <Button variant="ghost" onclick={() => void exportCsv()}>Ekspor CSV</Button>
-      <Button variant="ghost" onclick={() => void exportExcel()}>Ekspor Excel</Button>
+      <Button variant="ghost" onclick={() => void exportExcel()}>{ $t('admin.network.incidents.export.excel') }</Button>
     {/snippet}
   </PageHeader>
 
   {#if lastRunResult}
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
-      <StatTile label="Dievaluasi" value={String(lastRunResult.evaluated_count)} hint="Invoice diproses run ini" />
-      <StatTile label="Pengingat terkirim" value={String(lastRunResult.reminder_sent_count)} hint="WA/email terkirim" />
-      <StatTile label="Disuspend" value={String(lastRunResult.suspended_count)} hint="Suspend baru" tone="negative" />
-      <StatTile label="Aktif lagi" value={String(lastRunResult.resumed_count)} hint="Resume setelah bayar" tone="positive" />
-      <StatTile label="Gagal" value={String(lastRunResult.failed_count)} hint="Perlu tindak lanjut" tone="negative" />
+      <StatTile label={ $t('admin.billing_collection.summary.evaluated') } value={String(lastRunResult.evaluated_count)} hint={ $t('admin.billing_collection.v2.h_eval') } />
+      <StatTile label={ $t('admin.billing_collection.v2.remind') } value={String(lastRunResult.reminder_sent_count)} hint={ $t('admin.billing_collection.v2.h_remind') } />
+      <StatTile label={ $t('admin.billing_collection.v2.suspended') } value={String(lastRunResult.suspended_count)} hint={ $t('admin.billing_collection.v2.h_susp') } tone="negative" />
+      <StatTile label={ $t('admin.billing_collection.v2.resumed') } value={String(lastRunResult.resumed_count)} hint={ $t('admin.billing_collection.v2.h_res') } tone="positive" />
+      <StatTile label={ $t('admin.billing_collection.results.failed') } value={String(lastRunResult.failed_count)} hint={ $t('admin.billing_collection.v2.h_fail') } tone="negative" />
     </div>
   {/if}
 
   <Card>
     <Tabs
       items={[
-        { id: 'collection', label: 'Log penagihan', count: collectionRows.length },
-        { id: 'reminders', label: 'Log pengingat', count: reminderRows.length },
+        { id: 'collection', label: $t('admin.billing_collection.v2.tab1'), count: collectionRows.length },
+        { id: 'reminders', label: $t('admin.billing_collection.v2.tab2'), count: reminderRows.length },
       ]}
       active={activeTab}
       onselect={switchTab}
@@ -315,30 +316,30 @@
 
     {#if activeTab === 'collection'}
       <div class="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Field stacked type="select" id="col-action" label="Aksi" value={collectionAction} options={[{ value: 'all', label: 'Semua aksi' }, ...collectionActionOptions.map((o) => ({ value: o, label: collectionActionLabel(o) }))]} onchange={(v) => (collectionAction = v)} />
-        <Field stacked type="select" id="col-result" label="Hasil" value={collectionResult} options={[{ value: 'all', label: 'Semua hasil' }, ...collectionResultOptions.map((o) => ({ value: o, label: collectionResultLabel(o) }))]} onchange={(v) => (collectionResult = v)} />
-        <Field id="col-search" label="Cari" placeholder="Invoice / pelanggan…" value={collectionSearch} onchange={(v) => (collectionSearch = v)} />
-        <Field id="col-from" label="Dari" type="text" placeholder="2026-09-01 10:00" value={collectionFrom} onchange={(v) => (collectionFrom = v)} />
-        <Field id="col-to" label="Sampai" type="text" placeholder="2026-09-06 10:00" value={collectionTo} onchange={(v) => (collectionTo = v)} />
-        <Field stacked type="select" id="col-limit" label="Batas" value={String(collectionLimit)} options={LIMITS.map((l) => ({ value: String(l), label: String(l) }))} onchange={(v) => (collectionLimit = Number(v))} />
+        <Field stacked type="select" id="col-action" label={ $t('admin.billing_collection.columns.action') } value={collectionAction} options={[{ value: 'all', label: $t('admin.billing_collection.filters.all_actions') }, ...collectionActionOptions.map((o) => ({ value: o, label: collectionActionLabel(o, $t) }))]} onchange={(v) => (collectionAction = v)} />
+        <Field stacked type="select" id="col-result" label={ $t('admin.billing_collection.columns.result') } value={collectionResult} options={[{ value: 'all', label: $t('admin.billing_collection.filters.all_results') }, ...collectionResultOptions.map((o) => ({ value: o, label: collectionResultLabel(o, $t) }))]} onchange={(v) => (collectionResult = v)} />
+        <Field id="col-search" label={ $t('common.search') } placeholder={ $t('admin.billing_collection.v2.search_ph') } value={collectionSearch} onchange={(v) => (collectionSearch = v)} />
+        <Field id="col-from" label={ $t('admin.customers.billing.filters.from') } type="text" placeholder="2026-09-01 10:00" value={collectionFrom} onchange={(v) => (collectionFrom = v)} />
+        <Field id="col-to" label={ $t('admin.billing_collection.v2.until') } type="text" placeholder="2026-09-06 10:00" value={collectionTo} onchange={(v) => (collectionTo = v)} />
+        <Field stacked type="select" id="col-limit" label={ $t('admin.billing_collection.v2.limit') } value={String(collectionLimit)} options={LIMITS.map((l) => ({ value: String(l), label: String(l) }))} onchange={(v) => (collectionLimit = Number(v))} />
       </div>
       <div class="mt-2">
-        <Button variant="ghost" onclick={clearFilters}>Bersihkan filter</Button>
+        <Button variant="ghost" onclick={clearFilters}>{ $t('admin.billing_collection.v2.clear') }</Button>
       </div>
       <div class="mt-3">
         {#if loadingCollection}
-          <p class="py-8 text-center text-sm text-ink-500">Memuat log…</p>
+          <p class="py-8 text-center text-sm text-ink-500">{ $t('admin.billing_collection.v2.loading') }</p>
         {:else if collectionRows.length === 0}
-          <p class="py-8 text-center text-sm text-ink-500">Belum ada log penagihan. Jalankan manual atau tunggu scheduler.</p>
+          <p class="py-8 text-center text-sm text-ink-500">{ $t('admin.billing_collection.v2.empty1') }</p>
         {:else}
           <DataTable
             columns={[
-              { key: 'time', label: 'Waktu' },
-              { key: 'invoice', label: 'Invoice' },
-              { key: 'customer', label: 'Pelanggan' },
-              { key: 'action', label: 'Aksi' },
-              { key: 'result', label: 'Hasil' },
-              { key: 'reason', label: 'Alasan' },
+              { key: 'time', label: $t('admin.billing_collection.columns.time') },
+              { key: 'invoice', label: $t('admin.billing_collection.columns.invoice') },
+              { key: 'customer', label: $t('admin.billing_collection.columns.customer') },
+              { key: 'action', label: $t('admin.billing_collection.columns.action') },
+              { key: 'result', label: $t('admin.billing_collection.columns.result') },
+              { key: 'reason', label: $t('admin.billing_collection.columns.reason') },
             ]}
             rows={collectionRows}
           >
@@ -350,9 +351,9 @@
               {:else if col.key === 'customer'}
                 <div><div class="font-medium">{row.customer_name || '—'}</div><div class="text-xs text-ink-500">{row.subscription_status || '—'}</div></div>
               {:else if col.key === 'action'}
-                <div><Badge tone={collectionActionTone(row.action)} label={collectionActionLabel(row.action)} /><div class="mt-1 text-xs text-ink-500">{collectionActionHint(row.action)}</div></div>
+                <div><Badge tone={collectionActionTone(row.action)} label={collectionActionLabel(row.action, $t)} /><div class="mt-1 text-xs text-ink-500">{collectionActionHint(row.action, $t)}</div></div>
               {:else if col.key === 'result'}
-                <Badge tone={collectionResultTone(row.result)} label={collectionResultLabel(row.result)} />
+                <Badge tone={collectionResultTone(row.result)} label={collectionResultLabel(row.result, $t)} />
               {:else}
                 <span class="text-xs">{row.reason || '—'}</span>
               {/if}
@@ -362,30 +363,30 @@
       </div>
     {:else}
       <div class="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Field stacked type="select" id="rem-code" label="Pengingat" value={reminderCode} options={[{ value: 'all', label: 'Semua' }, ...reminderCodeOptions.map((o) => ({ value: o, label: collectionReminderLabel(o) }))]} onchange={(v) => (reminderCode = v)} />
-        <Field stacked type="select" id="rem-status" label="Status" value={reminderStatus} options={[{ value: 'all', label: 'Semua status' }, ...reminderStatusOptions.map((o) => ({ value: o, label: collectionResultLabel(o) }))]} onchange={(v) => (reminderStatus = v)} />
-        <Field id="rem-search" label="Cari" placeholder="Invoice / penerima…" value={reminderSearch} onchange={(v) => (reminderSearch = v)} />
-        <Field id="rem-from" label="Dari" type="text" placeholder="2026-09-01 10:00" value={reminderFrom} onchange={(v) => (reminderFrom = v)} />
-        <Field id="rem-to" label="Sampai" type="text" placeholder="2026-09-06 10:00" value={reminderTo} onchange={(v) => (reminderTo = v)} />
-        <Field stacked type="select" id="rem-limit" label="Batas" value={String(reminderLimit)} options={LIMITS.map((l) => ({ value: String(l), label: String(l) }))} onchange={(v) => (reminderLimit = Number(v))} />
+        <Field stacked type="select" id="rem-code" label={ $t('admin.billing_collection.v2.reminder') } value={reminderCode} options={[{ value: 'all', label: $t('admin.customers.billing.filters.all') }, ...reminderCodeOptions.map((o) => ({ value: o, label: collectionReminderLabel(o) }))]} onchange={(v) => (reminderCode = v)} />
+        <Field stacked type="select" id="rem-status" label={ $t('admin.billing_collection.columns.status') } value={reminderStatus} options={[{ value: 'all', label: $t('admin.billing_collection.filters.all_statuses') }, ...reminderStatusOptions.map((o) => ({ value: o, label: collectionResultLabel(o) }))]} onchange={(v) => (reminderStatus = v)} />
+        <Field id="rem-search" label={ $t('common.search') } placeholder={ $t('admin.billing_collection.v2.search_rem') } value={reminderSearch} onchange={(v) => (reminderSearch = v)} />
+        <Field id="rem-from" label={ $t('admin.customers.billing.filters.from') } type="text" placeholder="2026-09-01 10:00" value={reminderFrom} onchange={(v) => (reminderFrom = v)} />
+        <Field id="rem-to" label={ $t('admin.billing_collection.v2.until') } type="text" placeholder="2026-09-06 10:00" value={reminderTo} onchange={(v) => (reminderTo = v)} />
+        <Field stacked type="select" id="rem-limit" label={ $t('admin.billing_collection.v2.limit') } value={String(reminderLimit)} options={LIMITS.map((l) => ({ value: String(l), label: String(l) }))} onchange={(v) => (reminderLimit = Number(v))} />
       </div>
       <div class="mt-2">
-        <Button variant="ghost" onclick={clearFilters}>Bersihkan filter</Button>
+        <Button variant="ghost" onclick={clearFilters}>{ $t('admin.billing_collection.v2.clear') }</Button>
       </div>
       <div class="mt-3">
         {#if loadingReminders}
-          <p class="py-8 text-center text-sm text-ink-500">Memuat log…</p>
+          <p class="py-8 text-center text-sm text-ink-500">{ $t('admin.billing_collection.v2.loading') }</p>
         {:else if reminderRows.length === 0}
-          <p class="py-8 text-center text-sm text-ink-500">Belum ada log pengingat.</p>
+          <p class="py-8 text-center text-sm text-ink-500">{ $t('admin.billing_collection.v2.empty2') }</p>
         {:else}
           <DataTable
             columns={[
-              { key: 'time', label: 'Waktu' },
-              { key: 'invoice', label: 'Invoice' },
-              { key: 'reminder', label: 'Pengingat' },
-              { key: 'channel', label: 'Kanal' },
-              { key: 'status', label: 'Status' },
-              { key: 'detail', label: 'Detail' },
+              { key: 'time', label: $t('admin.billing_collection.columns.time') },
+              { key: 'invoice', label: $t('admin.billing_collection.columns.invoice') },
+              { key: 'reminder', label: $t('admin.billing_collection.v2.reminder') },
+              { key: 'channel', label: $t('admin.billing_collection.v2.channel') },
+              { key: 'status', label: $t('admin.billing_collection.columns.status') },
+              { key: 'detail', label: $t('admin.billing_collection.columns.detail') },
             ]}
             rows={reminderRows}
           >

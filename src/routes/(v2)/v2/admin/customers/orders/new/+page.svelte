@@ -213,7 +213,7 @@
     try {
       const payload = buildBackofficeInstallationOrderPayload(draft);
       const result = await api.customers.orders.createInstallation(payload);
-      toast.success('Order instalasi dibuat.');
+      toast.success($t('admin.customers.orders_new.t_created'));
       if (canReadWorkOrders && result.work_order?.id) {
         goto(`/v2/admin/network/installations?work_order_id=${encodeURIComponent(result.work_order.id)}`);
         return;
@@ -361,7 +361,7 @@
 
   function applyPickedCoordinates() {
     if (!Number.isFinite(pickerLat) || !Number.isFinite(pickerLng)) {
-      toast.error('Pilih titik di peta dulu.');
+      toast.error($t('admin.customers.orders_new.t_pick_first'));
       return;
     }
     draft.location.latitude = String(pickerLat);
@@ -385,11 +385,11 @@
     void searchCustomers();
   }
 </script>
-<AppShell title="Order instalasi baru">
+<AppShell title={ $t('admin.customers.orders_new.title') }>
   <PageHeader
-    title="Order instalasi baru"
+    title={ $t('admin.customers.orders_new.title') }
     eyebrow={ $t('admin.eyebrows.customers') }
-    desc="Wizard 3 langkah: pelanggan → alamat & layanan → review."
+    desc={ $t('admin.customers.orders_new.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" href="/v2/admin/customers">Batal</Button>
@@ -397,30 +397,30 @@
   </PageHeader>
 
   {#if loading}
-    <Card><p class="py-10 text-center text-sm text-ink-500">Memuat wizard…</p></Card>
+    <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('admin.customers.orders_new.loading') }</p></Card>
   {:else}
     <ol class="mb-3 flex items-center gap-2 text-sm">
       <li class="flex items-center gap-1.5 {step === 1 ? 'font-semibold text-ink-900' : 'text-ink-500'}"><span class="flex h-6 w-6 items-center justify-center rounded-full text-xs {step === 1 ? 'bg-ink-900 text-white' : 'bg-ink-100'}">1</span> Pelanggan</li>
       <li class="text-ink-300">→</li>
-      <li class="flex items-center gap-1.5 {step === 2 ? 'font-semibold text-ink-900' : 'text-ink-500'}"><span class="flex h-6 w-6 items-center justify-center rounded-full text-xs {step === 2 ? 'bg-ink-900 text-white' : 'bg-ink-100'}">2</span> Alamat & layanan</li>
+      <li class="flex items-center gap-1.5 {step === 2 ? 'font-semibold text-ink-900' : 'text-ink-500'}"><span class="flex h-6 w-6 items-center justify-center rounded-full text-xs {step === 2 ? 'bg-ink-900 text-white' : 'bg-ink-100'}">2</span> { $t('admin.customers.orders_new.step2') }</li>
       <li class="text-ink-300">→</li>
       <li class="flex items-center gap-1.5 {step === 3 ? 'font-semibold text-ink-900' : 'text-ink-500'}"><span class="flex h-6 w-6 items-center justify-center rounded-full text-xs {step === 3 ? 'bg-ink-900 text-white' : 'bg-ink-100'}">3</span> Review</li>
     </ol>
 
     {#if step === 1}
-      <Card title="Konteks pelanggan">
+      <Card title={ $t('admin.customers.orders_new.cust_ctx') }>
         <div class="mb-3 flex gap-1 rounded-xl bg-ink-50 p-1">
-          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.customerMode === 'new' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.customerMode = 'new')}>Pelanggan baru</button>
-          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.customerMode === 'existing' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.customerMode = 'existing')}>Sudah ada</button>
+          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.customerMode === 'new' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.customerMode = 'new')}>{ $t('admin.customers.orders_new.tab_new') }</button>
+          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.customerMode === 'existing' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.customerMode = 'existing')}>{ $t('admin.customers.orders_new.tab_existing') }</button>
         </div>
         {#if draft.customerMode === 'existing'}
           <div class="flex gap-2">
             <div class="flex-1">
-              <Field id="ord-search" label="Cari pelanggan" placeholder="Nama / HP / email… (min 2 huruf)" value={customerSearch} onchange={(v) => { customerSearch = v; }} />
+              <Field id="ord-search" label={ $t('admin.customers.orders_new.cust_aria') } placeholder={ $t('admin.customers.orders_new.search_ph') } value={customerSearch} onchange={(v) => { customerSearch = v; }} />
             </div>
             <div class="pt-6">
               <Button variant="ghost" onclick={() => void searchCustomers()} disabled={customerSearchLoading || customerSearch.trim().length < 2}>
-                {customerSearchLoading ? 'Mencari…' : 'Cari'}
+                {customerSearchLoading ? $t('admin.customers.orders_new.searching') : $t('common.search')}
               </Button>
             </div>
           </div>
@@ -431,74 +431,74 @@
               {#each customerResults as customer}
                 <button type="button" class="rounded-xl px-3 py-2.5 text-left ring-1 ring-ink-200 hover:bg-ink-50 {draft.existingCustomerId === customer.id ? 'ring-2 ring-ink-900' : ''}" onclick={() => void selectCustomer(customer.id)}>
                   <div class="font-medium">{customer.name}</div>
-                  <div class="text-xs text-ink-500">{customer.phone || customer.email || 'Tanpa kontak'}</div>
+                  <div class="text-xs text-ink-500">{customer.phone || customer.email || $t('admin.customers.orders_new.no_contact')}</div>
                 </button>
               {/each}
             {/if}
           </div>
         {:else}
           <div class="grid gap-2 sm:grid-cols-2">
-            <Field stacked id="ord-name" label="Nama" value={draft.customer.name} onchange={(v) => (draft.customer.name = v)} />
-            <Field stacked id="ord-email" label="Email" type="email" value={draft.customer.email} onchange={(v) => (draft.customer.email = v)} />
+            <Field stacked id="ord-name" label={ $t('admin.customers.fields.name') } value={draft.customer.name} onchange={(v) => (draft.customer.name = v)} />
+            <Field stacked id="ord-email" label={ $t('admin.customers.fields.email') } type="email" value={draft.customer.email} onchange={(v) => (draft.customer.email = v)} />
             <div class="flex gap-2">
               <div class="w-28 shrink-0">
                 <Select2 bind:value={phonePrefix} options={phonePrefixOptions} width="100%" />
               </div>
               <div class="flex-1">
-                <Field stacked id="ord-phone" label="No. HP" placeholder="8123456789" value={phoneLocalNumber} onchange={(v) => (phoneLocalNumber = v)} />
+                <Field stacked id="ord-phone" label={ $t('admin.customers.orders_new.phone') } placeholder="8123456789" value={phoneLocalNumber} onchange={(v) => (phoneLocalNumber = v)} />
               </div>
             </div>
-            <Field stacked id="ord-notes" label="Catatan" type="textarea" rows={2} value={draft.customer.notes} onchange={(v) => (draft.customer.notes = v)} />
+            <Field stacked id="ord-notes" label={ $t('admin.customers.orders_new.note') } type="textarea" rows={2} value={draft.customer.notes} onchange={(v) => (draft.customer.notes = v)} />
           </div>
         {/if}
       </Card>
     {/if}
 
     {#if step === 2}
-      <Card title="Alamat & layanan">
+      <Card title={ $t('admin.customers.orders_new.step2') }>
         <div class="mb-3 flex gap-1 rounded-xl bg-ink-50 p-1">
-          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.locationMode === 'existing' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" disabled={draft.customerMode === 'new' && !draft.customer.name.trim()} onclick={() => (draft.locationMode = 'existing')}>Alamat tersimpan</button>
-          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.locationMode === 'new' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.locationMode = 'new')}>Alamat baru</button>
+          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.locationMode === 'existing' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" disabled={draft.customerMode === 'new' && !draft.customer.name.trim()} onclick={() => (draft.locationMode = 'existing')}>{ $t('admin.customers.orders_new.saved_addr') }</button>
+          <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.locationMode === 'new' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.locationMode = 'new')}>{ $t('admin.customers.orders_new.new_addr') }</button>
         </div>
         {#if draft.locationMode === 'existing'}
-          <Field stacked id="ord-loc" label="Alamat pelanggan" type="select" value={draft.existingLocationId} options={[{ value: '', label: 'Pilih alamat' }, ...locations.map((l) => ({ value: l.id, label: `${l.label} — ${l.address_line1 || 'tanpa alamat'}` }))]} onchange={(v) => (draft.existingLocationId = v)} />
+          <Field stacked id="ord-loc" label={ $t('admin.customers.orders_new.cust_addr') } type="select" value={draft.existingLocationId} options={[{ value: '', label: 'Pilih alamat' }, ...locations.map((l) => ({ value: l.id, label: `${l.label} — ${l.address_line1 || $t('admin.customers.orders_new.no_addr')}` }))]} onchange={(v) => (draft.existingLocationId = v)} />
         {:else}
           <div class="grid gap-2 sm:grid-cols-2">
-            <Field stacked id="ord-llabel" label="Label lokasi" value={draft.location.label} onchange={(v) => (draft.location.label = v)} />
-            <Field stacked id="ord-laddr1" label="Alamat baris 1" value={draft.location.address_line1} onchange={(v) => (draft.location.address_line1 = v)} />
-            <Field stacked id="ord-laddr2" label="Alamat baris 2" value={draft.location.address_line2} onchange={(v) => (draft.location.address_line2 = v)} />
-            <Field stacked id="ord-lcity" label="Kota" value={draft.location.city} onchange={(v) => (draft.location.city = v)} />
-            <Field stacked id="ord-lstate" label="Provinsi" value={draft.location.state} onchange={(v) => (draft.location.state = v)} />
-            <Field stacked id="ord-lpostal" label="Kode pos" value={draft.location.postal_code} onchange={(v) => (draft.location.postal_code = v)} />
+            <Field stacked id="ord-llabel" label={ $t('admin.customers.orders_new.loc_label') } value={draft.location.label} onchange={(v) => (draft.location.label = v)} />
+            <Field stacked id="ord-laddr1" label={ $t('admin.customers.orders_new.addr1') } value={draft.location.address_line1} onchange={(v) => (draft.location.address_line1 = v)} />
+            <Field stacked id="ord-laddr2" label={ $t('admin.customers.orders_new.addr2') } value={draft.location.address_line2} onchange={(v) => (draft.location.address_line2 = v)} />
+            <Field stacked id="ord-lcity" label={ $t('admin.customers.orders_new.city') } value={draft.location.city} onchange={(v) => (draft.location.city = v)} />
+            <Field stacked id="ord-lstate" label={ $t('admin.customers.orders_new.province') } value={draft.location.state} onchange={(v) => (draft.location.state = v)} />
+            <Field stacked id="ord-lpostal" label={ $t('admin.customers.orders_new.postal') } value={draft.location.postal_code} onchange={(v) => (draft.location.postal_code = v)} />
           </div>
           <div class="mt-2 flex items-center justify-between rounded-xl bg-ink-50 px-3 py-2.5">
-            <div class="text-sm"><div class="font-medium">Titik instalasi {draft.location.latitude && draft.location.longitude ? `(${draft.location.latitude}, ${draft.location.longitude})` : '(belum dipilih)'}</div><div class="text-xs text-ink-500">Opsional — teknisi pakai titik ini di lapangan.</div></div>
-            <Button variant="ghost" onclick={() => void openMapPicker()}>Pilih di peta</Button>
+            <div class="text-sm"><div class="font-medium">Titik instalasi {draft.location.latitude && draft.location.longitude ? `(${draft.location.latitude}, ${draft.location.longitude})` : $t('admin.customers.orders_new.not_picked')}</div><div class="text-xs text-ink-500">{ $t('admin.customers.orders_new.geo_help') }</div></div>
+            <Button variant="ghost" onclick={() => void openMapPicker()}>{ $t('admin.customers.orders_new.pick_map') }</Button>
           </div>
           <div class="mt-2">
-            <Field stacked id="ord-lnotes" label="Catatan lokasi" type="textarea" rows={2} value={draft.location.notes} onchange={(v) => (draft.location.notes = v)} />
+            <Field stacked id="ord-lnotes" label={ $t('admin.customers.orders_new.loc_note') } type="textarea" rows={2} value={draft.location.notes} onchange={(v) => (draft.location.notes = v)} />
           </div>
         {/if}
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
-          <Field stacked id="ord-pkg" label="Paket" type="select" value={draft.packageId} options={[{ value: '', label: 'Pilih paket' }, ...packages.map((pkg) => ({ value: pkg.id, label: `${pkg.name} — ${packagePriceLabel(pkg)}` }))]} onchange={(v) => (draft.packageId = v)} />
-          <Field stacked id="ord-cycle" label="Siklus billing" type="select" value={draft.billingCycle} options={[{ value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan' }]} onchange={(v) => (draft.billingCycle = v as 'monthly' | 'yearly')} />
-          <Field stacked id="ord-date" label="Tanggal instalasi" type="text" placeholder="2026-09-10 09:00" value={draft.requestedInstallationDate} onchange={(v) => (draft.requestedInstallationDate = v)} />
-          <Field stacked id="ord-onotes" label="Catatan order" value={draft.notes} onchange={(v) => (draft.notes = v)} />
+          <Field stacked id="ord-pkg" label={ $t('admin.customers.orders_new.pkg') } type="select" value={draft.packageId} options={[{ value: '', label: 'Pilih paket' }, ...packages.map((pkg) => ({ value: pkg.id, label: `${pkg.name} — ${packagePriceLabel(pkg)}` }))]} onchange={(v) => (draft.packageId = v)} />
+          <Field stacked id="ord-cycle" label={ $t('admin.customers.orders_new.cycle') } type="select" value={draft.billingCycle} options={[{ value: 'monthly', label: $t('admin.customers.detail.v2.monthly') }, { value: 'yearly', label: $t('admin.customers.detail.v2.yearly') }]} onchange={(v) => (draft.billingCycle = v as 'monthly' | 'yearly')} />
+          <Field stacked id="ord-date" label={ $t('admin.customers.orders_new.inst_date') } type="text" placeholder="2026-09-10 09:00" value={draft.requestedInstallationDate} onchange={(v) => (draft.requestedInstallationDate = v)} />
+          <Field stacked id="ord-onotes" label={ $t('admin.customers.orders_new.order_note') } value={draft.notes} onchange={(v) => (draft.notes = v)} />
         </div>
       </Card>
     {/if}
 
     {#if step === 3}
-      <Card title="Review order">
+      <Card title={ $t('admin.customers.orders_new.review') }>
         <dl class="grid gap-3 text-sm sm:grid-cols-2">
           <div><dt class="text-xs text-ink-500">Pelanggan</dt><dd class="font-medium">{formatSelectedCustomer()}</dd></div>
           <div><dt class="text-xs text-ink-500">Alamat</dt><dd class="font-medium">{formatSelectedLocation()}</dd></div>
-          <div><dt class="text-xs text-ink-500">Paket</dt><dd class="font-medium">{selectedPackage?.name || '-'}</dd></div>
+          <div><dt class="text-xs text-ink-500">{ $t('admin.customers.orders_new.pkg') }</dt><dd class="font-medium">{selectedPackage?.name || '-'}</dd></div>
           <div><dt class="text-xs text-ink-500">Billing</dt><dd class="font-medium">{draft.billingCycle}</dd></div>
           <div><dt class="text-xs text-ink-500">Tgl instalasi</dt><dd class="font-medium">{draft.requestedInstallationDate || '-'}</dd></div>
-          <div><dt class="text-xs text-ink-500">Catatan</dt><dd class="font-medium">{draft.notes || '-'}</dd></div>
+          <div><dt class="text-xs text-ink-500">{ $t('admin.customers.orders_new.note') }</dt><dd class="font-medium">{draft.notes || '-'}</dd></div>
         </dl>
-        <p class="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-800">Order dibuat sebagai pending — langganan aktif setelah instalasi selesai.</p>
+        <p class="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs text-amber-800">{ $t('admin.customers.orders_new.pending_note') }</p>
       </Card>
     {/if}
 
@@ -512,7 +512,7 @@
           <Button variant="primary" onclick={nextStep}>Lanjut</Button>
         {:else}
           <Button variant="primary" onclick={() => void submitOrder()} disabled={submitting}>
-            {submitting ? 'Menyimpan…' : 'Buat order'}
+            {submitting ? 'Menyimpan…' : $t('admin.customers.orders_new.create_btn')}
           </Button>
         {/if}
       </div>
@@ -520,8 +520,8 @@
   {/if}
 </AppShell>
 
-<Modal bind:show={showMapPicker} title="Pilih titik instalasi" width="860px" onclose={closeMapPicker}>
-  <div class="text-sm text-ink-500">Klik peta untuk menaruh pin, atau geser pin yang sudah ada.</div>
+<Modal bind:show={showMapPicker} title={ $t('admin.customers.orders_new.map_title') } width="860px" onclose={closeMapPicker}>
+  <div class="text-sm text-ink-500">{ $t('admin.customers.orders_new.map_hint') }</div>
   {#if pickerLat != null && pickerLng != null}
     <p class="mt-1 font-mono text-xs">{pickerLat.toFixed(7)}, {pickerLng.toFixed(7)}</p>
   {/if}
@@ -538,6 +538,6 @@
   </div>
   <div class="mt-3 flex justify-end gap-2">
     <Button variant="ghost" onclick={closeMapPicker}>Batal</Button>
-    <Button variant="primary" onclick={applyPickedCoordinates}>Pakai titik ini</Button>
+    <Button variant="primary" onclick={applyPickedCoordinates}>{ $t('admin.customers.orders_new.use_point') }</Button>
   </div>
 </Modal>
