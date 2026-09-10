@@ -43,6 +43,7 @@
   import { toast } from '$lib/stores/toast';
   import { extractApiErrorMessage } from '$lib/api/core';
   import Modal from '$lib/components/ui/Modal.svelte';
+  import { t } from 'svelte-i18n';
   import {
     AppShell,
     AttentionPanel,
@@ -119,7 +120,7 @@
   );
 
   const roleFilterOptions = $derived([
-    { value: 'all', label: 'Semua role' },
+    { value: 'all', label: $t('admin.team.v2.all_roles') },
     ...roles
       .filter((r) => r.name.toLowerCase() !== 'customer')
       .map((r) => ({ value: r.id, label: r.name })),
@@ -154,7 +155,7 @@
           f.kind === 'no_2fa_privileged'
             ? 'Akun berkuasa tanpa 2FA'
             : f.kind === 'unverified_email'
-              ? 'Email belum diverifikasi'
+              ? $t('admin.team.v2.unverified')
               : 'Staf nonaktif masih terdaftar',
         detail: f.text,
         action: f.kind === 'no_2fa_privileged' ? 'Buka pengaturan keamanan' : 'Tinjau akun',
@@ -167,15 +168,15 @@
     showArchive
       ? [
           { key: 'member', label: 'Anggota', width: '34%' },
-          { key: 'role', label: 'Role' },
-          { key: 'deleted', label: 'Dihapus', hideSm: true },
+          { key: 'role', label: $t('admin.team.v2.col_role') },
+          { key: 'deleted', label: $t('admin.team.v2.col_deleted'), hideSm: true },
           { key: 'actions', label: '', align: 'right', width: '120px' },
         ]
       : [
           { key: 'member', label: 'Anggota', width: '32%' },
-          { key: 'role', label: 'Role' },
-          { key: 'security', label: 'Keamanan akun', hideSm: true },
-          { key: 'joined', label: 'Bergabung', hideSm: true },
+          { key: 'role', label: $t('admin.team.v2.col_role') },
+          { key: 'security', label: $t('admin.team.v2.col_security'), hideSm: true },
+          { key: 'joined', label: $t('admin.team.v2.col_joined'), hideSm: true },
           { key: 'actions', label: '', align: 'right', width: '120px' },
         ],
   );
@@ -227,7 +228,7 @@
     inviting = true;
     try {
       await api.team.add(inviteEmail, inviteName, inviteRoleId, invitePassword || undefined);
-      toast.success('Anggota ditambahkan');
+      toast.success($t('admin.team.v2.t_added'));
       inviteOpen = false;
       inviteEmail = '';
       inviteName = '';
@@ -252,7 +253,7 @@
     savingRole = true;
     try {
       await api.team.updateRole(target.id, editRoleId);
-      toast.success('Role diperbarui');
+      toast.success($t('admin.team.v2.t_role'));
       editOpen = false;
       editTarget = null;
       await load();
@@ -269,7 +270,7 @@
     removing = true;
     try {
       await api.team.remove(target.id);
-      toast.success('Anggota dipindahkan ke arsip');
+      toast.success($t('admin.team.v2.t_archived'));
       removeTarget = null;
       rows = rows.filter((m) => m.id !== target.id);
       if (archived.length) await loadArchive();
@@ -284,7 +285,7 @@
     busyId = m.id;
     try {
       await api.team.restore(m.id);
-      toast.success('Anggota dipulihkan');
+      toast.success($t('admin.team.v2.t_restored'));
       await Promise.all([load(), loadArchive()]);
     } catch (e: unknown) {
       toast.error(extractApiErrorMessage(e, 'Gagal memulihkan anggota'));
@@ -299,7 +300,7 @@
     purging = true;
     try {
       await api.team.hardDelete(target.id);
-      toast.success('Keanggotaan dihapus permanen');
+      toast.success($t('admin.team.v2.t_purged'));
       purgeTarget = null;
       await loadArchive();
     } catch (e: unknown) {
@@ -318,17 +319,17 @@
   });
 </script>
 
-<AppShell title="Anggota tim">
+<AppShell title={ $t('admin.team.v2.aria_team') }>
   <PageHeader
-    title="Anggota tim"
+    title={ $t('admin.team.v2.aria_team') }
     eyebrow="Organisasi"
-    desc="Staf yang punya akses ke panel ini. Akun pelanggan dikelola di modul Pelanggan."
+    desc={ $t('admin.team.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={() => void load()}>Muat ulang</Button>
+      <Button variant="ghost" icon="refresh" onclick={() => void load()}>{ $t('network.olt.refresh') }</Button>
       {#if $can('create', 'team')}
         <Button variant="primary" icon="plus" onclick={() => (inviteOpen = true)}>
-          Tambah anggota
+          { $t('admin.team.v2.btn_add') }
         </Button>
       {/if}
     {/snippet}
@@ -337,35 +338,35 @@
   <Card>
     <div class="grid grid-cols-2 gap-6 sm:grid-cols-4">
       <StatTile
-        label="Staf"
+        label={ $t('admin.team.v2.tile_staff') }
         value={String(ringkasan.staff)}
         hint={ringkasan.customers > 0
-          ? `${ringkasan.rows} baris keanggotaan, ${ringkasan.customers} di antaranya akun pelanggan`
-          : 'punya akses panel admin'}
+          ? $t('admin.team.v2.h_mixed', { values: { a: ringkasan.rows, b: ringkasan.customers } })
+          : $t('admin.team.v2.h_staff')}
       />
       <StatTile
-        label="Aktif"
+        label={ $t('network.olt.online') }
         value={String(ringkasan.staffActive)}
-        hint={`dari ${ringkasan.staff} staf`}
+        hint={$t('admin.team.v2.hint_from', { values: { a: ringkasan.staff } })}
         tone="positive"
       />
       <StatTile
-        label="Nonaktif"
+        label={ $t('admin.customers.stats.inactive') }
         value={String(ringkasan.staffInactive)}
-        hint={ringkasan.staffInactive > 0 ? 'akun tidak bisa masuk' : 'semua staf bisa masuk'}
+        hint={ringkasan.staffInactive > 0 ? $t('admin.team.v2.h_inactive') : $t('admin.team.v2.h_all_in')}
         tone={ringkasan.staffInactive > 0 ? 'warning' : 'neutral'}
       />
       <StatTile
-        label="Akun pelanggan"
+        label={ $t('admin.team.v2.tile_cust') }
         value={String(ringkasan.customers)}
-        hint={ringkasan.customers > 0 ? 'bukan anggota tim — dulu ikut terhitung' : 'tidak ada'}
+        hint={ringkasan.customers > 0 ? $t('admin.team.v2.h_cust') : $t('admin.team.v2.h_none')}
       />
     </div>
   </Card>
 
   {#if peringatan.length}
     <div class="mt-4">
-      <AttentionPanel items={peringatan} title="Perlu perhatian" />
+      <AttentionPanel items={peringatan} title={ $t('admin.team.v2.attention') } />
     </div>
   {/if}
 
@@ -380,15 +381,15 @@
           />
           <input
             bind:value={search}
-            placeholder="Cari nama atau email"
-            aria-label="Cari anggota"
+            placeholder={ $t('admin.team.v2.search_ph') }
+            aria-label={ $t('admin.team.v2.search_aria') }
             class="focus-ring h-9 w-full rounded-lg border-0 bg-white pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400"
           />
         </div>
 
         <select
           bind:value={roleFilter}
-          aria-label="Filter role"
+          aria-label={ $t('admin.team.v2.f_role') }
           class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
         >
           {#each roleFilterOptions as o (o.value)}
@@ -399,23 +400,23 @@
         {#if !showArchive}
           <select
             bind:value={statusFilter}
-            aria-label="Filter status"
+            aria-label={ $t('admin.team.v2.f_status') }
             class="focus-ring h-9 rounded-lg border-0 bg-white px-2.5 text-base text-ink-900 ring-1 ring-inset ring-ink-200"
           >
-            <option value="all">Semua status</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
+            <option value="all">{ $t('admin.team.v2.all_status') }</option>
+            <option value="active">{ $t('network.olt.online') }</option>
+            <option value="inactive">{ $t('admin.customers.stats.inactive') }</option>
           </select>
         {/if}
 
         <Button variant={showArchive ? 'primary' : 'ghost'} icon="folder" onclick={toggleArchive}>
-          {showArchive ? 'Kembali ke daftar aktif' : 'Arsip'}
+          {showArchive ? $t('admin.team.v2.back_active') : $t('admin.team.v2.archive')}
         </Button>
       </div>
 
       {#if showArchive}
         <p class="mb-3 rounded-lg bg-ink-50 px-3 py-2 text-sm text-ink-600">
-          Keanggotaan yang dihapus. Memulihkan mengembalikan akses panel dengan role terakhirnya.
+          { $t('admin.team.v2.archive_note') }
         </p>
       {/if}
 
@@ -423,17 +424,17 @@
         {columns}
         rows={terlihat}
         loading={showArchive ? loadingArchive : loading}
-        emptyTitle={showArchive ? 'Arsip kosong' : 'Tidak ada staf yang cocok'}
+        emptyTitle={showArchive ? $t('admin.team.v2.archive_empty') : $t('admin.team.v2.no_match')}
         emptyHint={showArchive
-          ? 'Belum ada anggota tim yang dihapus.'
+          ? $t('admin.team.v2.arch_none')
           : search || roleFilter !== 'all' || statusFilter !== 'all'
-            ? 'Coba hapus filter atau ubah kata kunci.'
-            : 'Tambahkan anggota untuk memberi akses panel.'}
+            ? $t('admin.team.v2.filter_hint')
+            : $t('admin.team.v2.add_hint')}
         footNote={showArchive
-          ? `${terlihat.length} keanggotaan diarsipkan`
-          : `${terlihat.length} dari ${ringkasan.staff} staf` +
+          ? $t('admin.team.v2.archived_n', { values: { a: terlihat.length } })
+          : $t('admin.team.v2.foot_active', { values: { a: terlihat.length, b: ringkasan.staff } }) +
             (ringkasan.customers > 0
-              ? ` · ${ringkasan.customers} akun pelanggan disembunyikan dari daftar ini`
+              ? $t('admin.team.v2.foot_hidden', { values: { c: ringkasan.customers } })
               : '')}
       >
         {#snippet cell(m, c)}
@@ -447,7 +448,7 @@
               </span>
               <div class="min-w-0">
                 <div class="truncate font-medium text-ink-900">
-                  {m.name || 'Tanpa nama'}
+                  {m.name || $t('admin.team.v2.noname')}
                   {#if m.email === $user?.email}
                     <span class="ml-1 text-xs font-normal text-ink-400">(Anda)</span>
                   {/if}
@@ -458,11 +459,11 @@
           {:else if c.key === 'role'}
             <div class="flex flex-wrap items-center gap-1.5">
               <Badge
-                label={m.role_name || m.role || 'Tanpa role'}
+                label={m.role_name || m.role || $t('admin.team.v2.no_role')}
                 tone={roleTone(m)}
               />
               {#if m.is_active === false}
-                <Badge label="Nonaktif" tone="neutral" />
+                <Badge label={ $t('admin.customers.stats.inactive') } tone="neutral" />
               {/if}
             </div>
           {:else if c.key === 'security'}
@@ -477,11 +478,11 @@
                     ? 'font-medium text-red-700'
                     : 'text-ink-500'}"
                 >
-                  <Icon name="shield" size={13} /> Tanpa 2FA
+                  <Icon name="shield" size={13} /> { $t('admin.team.v2.no_2fa') }
                 </span>
               {/if}
               {#if m.email_verified_at === null}
-                <span class="text-amber-800">Email belum diverifikasi</span>
+                <span class="text-amber-800">{ $t('admin.team.v2.unverified') }</span>
               {/if}
             </div>
           {:else if c.key === 'joined'}
@@ -492,14 +493,14 @@
             {#if showArchive}
               <RowActions
                 primary={{
-                  label: busyId === m.id ? 'Memulihkan…' : 'Pulihkan',
+                  label: busyId === m.id ? $t('admin.team.v2.restoring') : $t('admin.team.v2.restore'),
                   icon: 'refresh',
                   onclick: () => void pulihkan(m),
                 }}
                 rest={$can('delete', 'team')
                   ? [
                       {
-                        label: 'Hapus permanen',
+                        label: $t('admin.team.v2.purge_title'),
                         icon: 'close' as const,
                         danger: true,
                         onclick: () => (purgeTarget = m),
@@ -510,18 +511,18 @@
             {:else}
               <RowActions
                 primary={{
-                  label: 'Ubah role',
+                  label: $t('admin.team.v2.change_role'),
                   icon: 'cog',
                   onclick: () => bukaEdit(m),
                   disabled: !$can('update', 'team') || !canManage(myLevel, m),
                   disabledReason: !$can('update', 'team')
-                    ? 'Anda tidak punya izin mengubah anggota tim'
-                    : 'Role anggota ini setara atau lebih tinggi dari Anda',
+                    ? $t('admin.team.v2.no_perm')
+                    : $t('admin.team.v2.role_ge'),
                 }}
                 rest={$can('delete', 'team') && canManage(myLevel, m)
                   ? [
                       {
-                        label: 'Hapus dari tim',
+                        label: $t('admin.team.v2.remove_title'),
                         icon: 'close' as const,
                         danger: true,
                         onclick: () => (removeTarget = m),
@@ -541,12 +542,12 @@
           <summary
             class="focus-ring cursor-pointer rounded text-sm font-medium text-ink-600 hover:text-ink-900"
           >
-            {pelanggan.length} akun pelanggan punya baris keanggotaan di tenant ini
+            { $t('admin.team.v2.cust_rows', { values: { n: pelanggan.length } }) }
           </summary>
           <ul class="mt-2 space-y-1 text-sm text-ink-500">
             {#each pelanggan as p (p.id)}
               <li class="flex flex-wrap items-center gap-2">
-                <span class="text-ink-700">{p.name || 'Tanpa nama'}</span>
+                <span class="text-ink-700">{p.name || $t('admin.team.v2.noname')}</span>
                 <span>{p.email}</span>
                 <Badge label={p.role_name || p.role || 'Customer'} tone="neutral" />
               </li>
@@ -562,27 +563,27 @@
   </div>
 </AppShell>
 
-<Modal bind:show={inviteOpen} title="Tambah anggota tim" width="440px">
+<Modal bind:show={inviteOpen} title={ $t('admin.team.v2.add_aria') } width="440px">
   <div class="ds-scope space-y-1">
     <Field
       id="inv-nama"
-      label="Nama"
+      label={ $t('admin.customers.fields.name') }
       value={inviteName}
       onchange={(v) => (inviteName = v)}
-      placeholder="Nama lengkap"
+      placeholder={ $t('admin.team.v2.name_ph') }
     />
     <Field
       id="inv-email"
-      label="Email"
+      label={ $t('admin.customers.fields.email') }
       type="email"
       value={inviteEmail}
       onchange={(v) => (inviteEmail = v)}
-      placeholder="nama@perusahaan.com"
+      placeholder={ $t('admin.team.v2.email_ph') }
       help="Dipakai untuk masuk ke panel."
     />
     <Field
       id="inv-role"
-      label="Role"
+      label={ $t('admin.team.v2.col_role') }
       type="select"
       value={inviteRoleId}
       options={assignableRoles.map((r) => ({ value: r.id, label: `${r.name} (level ${r.level})` }))}
@@ -591,7 +592,7 @@
     />
     <Field
       id="inv-pass"
-      label="Kata sandi awal"
+      label={ $t('admin.team.v2.pass_label') }
       type="password"
       value={invitePassword}
       onchange={(v) => (invitePassword = v)}
@@ -600,7 +601,7 @@
   </div>
   {#snippet footer()}
     <div class="ds-scope flex justify-end gap-2">
-      <Button variant="ghost" onclick={() => (inviteOpen = false)}>Batal</Button>
+      <Button variant="ghost" onclick={() => (inviteOpen = false)}>{ $t('common.cancel') }</Button>
       <Button
         variant="primary"
         loading={inviting}
@@ -613,7 +614,7 @@
   {/snippet}
 </Modal>
 
-<Modal bind:show={editOpen} title="Ubah role anggota" width="420px">
+<Modal bind:show={editOpen} title={ $t('admin.team.v2.edit_role_title') } width="420px">
   <div class="ds-scope">
     {#if editTarget}
       <p class="mb-3 text-sm text-ink-600">
@@ -622,7 +623,7 @@
       </p>
       <Field
         id="edit-role"
-        label="Role baru"
+        label={ $t('admin.team.v2.new_role') }
         type="select"
         value={editRoleId}
         options={assignableRoles.map((r) => ({
@@ -630,20 +631,20 @@
           label: `${r.name} (level ${r.level})`,
         }))}
         onchange={(v) => (editRoleId = v)}
-        help="Mengubah role langsung mengubah izin yang dimiliki akun ini."
+        help={ $t('admin.team.v2.role_help') }
       />
     {/if}
   </div>
   {#snippet footer()}
     <div class="ds-scope flex justify-end gap-2">
-      <Button variant="ghost" onclick={() => (editOpen = false)}>Batal</Button>
+      <Button variant="ghost" onclick={() => (editOpen = false)}>{ $t('common.cancel') }</Button>
       <Button
         variant="primary"
         loading={savingRole}
         disabled={!editRoleId || editRoleId === editTarget?.role_id}
         onclick={() => void simpanRole()}
       >
-        Simpan
+        { $t('common.save') }
       </Button>
     </div>
   {/snippet}
@@ -651,7 +652,7 @@
 
 <Modal
   show={removeTarget !== null}
-  title="Hapus dari tim"
+  title={ $t('admin.team.v2.remove_title') }
   width="420px"
   onclose={() => (removeTarget = null)}
 >
@@ -659,37 +660,37 @@
     {#if removeTarget}
       <p>
         <span class="font-medium text-ink-900">{removeTarget.name || removeTarget.email}</span>
-        kehilangan akses ke panel. Keanggotaannya masuk arsip dan bisa dipulihkan.
+        { $t('admin.team.v2.remove_p1') }
       </p>
-      <p class="mt-2 text-ink-500">Akun penggunanya sendiri tidak dihapus.</p>
+      <p class="mt-2 text-ink-500">{ $t('admin.team.v2.remove_p2') }</p>
     {/if}
   </div>
   {#snippet footer()}
     <div class="ds-scope flex justify-end gap-2">
-      <Button variant="ghost" onclick={() => (removeTarget = null)}>Batal</Button>
-      <Button variant="danger" loading={removing} onclick={() => void hapus()}>Hapus</Button>
+      <Button variant="ghost" onclick={() => (removeTarget = null)}>{ $t('common.cancel') }</Button>
+      <Button variant="danger" loading={removing} onclick={() => void hapus()}>{ $t('common.delete') }</Button>
     </div>
   {/snippet}
 </Modal>
 
 <Modal
   show={purgeTarget !== null}
-  title="Hapus permanen"
+  title={ $t('admin.team.v2.purge_title') }
   width="420px"
   onclose={() => (purgeTarget = null)}
 >
   <div class="ds-scope text-sm text-ink-700">
     {#if purgeTarget}
       <p>
-        Baris keanggotaan
+        { $t('admin.team.v2.purge_p1') }
         <span class="font-medium text-ink-900">{purgeTarget.name || purgeTarget.email}</span>
-        dihapus permanen dan tidak bisa dipulihkan.
+        { $t('admin.team.v2.purge_p2') }
       </p>
     {/if}
   </div>
   {#snippet footer()}
     <div class="ds-scope flex justify-end gap-2">
-      <Button variant="ghost" onclick={() => (purgeTarget = null)}>Batal</Button>
+      <Button variant="ghost" onclick={() => (purgeTarget = null)}>{ $t('common.cancel') }</Button>
       <Button variant="danger" loading={purging} onclick={() => void hapusPermanen()}>
         Hapus permanen
       </Button>
