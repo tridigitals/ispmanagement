@@ -41,9 +41,9 @@
 
   const columns: Column[] = [
     { key: 'customer', label: 'Pelanggan' },
-    { key: 'service', label: 'Layanan' },
-    { key: 'issue', label: 'Masalah' },
-    { key: 'action', label: 'Aksi anjuran' },
+    { key: 'service', label: $t('admin.lifecycle_recon.col_service') },
+    { key: 'issue', label: $t('admin.lifecycle_recon.col_issue') },
+    { key: 'action', label: $t('admin.lifecycle_recon.col_action') },
   ];
 
   let report = $state<CustomerServiceLifecycleReport>({
@@ -69,11 +69,11 @@
   const canRead = $derived($can('read', 'customers') || $can('create', 'orders'));
   const canRepair = $derived($can('manage', 'billing'));
 
-  const issueOptions = [
-    { value: 'all', label: 'Semua masalah' },
-    { value: 'missing_bootstrap_invoice', label: 'Belum ada invoice awal' },
-    { value: 'invalid_active_lifecycle', label: 'Lifecycle aktif tidak valid' },
-  ];
+  const issueOptions = $derived([
+    { value: 'all', label: $t('admin.lifecycle_recon.all_issues') },
+    { value: 'missing_bootstrap_invoice', label: $t('admin.lifecycle_recon.it_missing') },
+    { value: 'invalid_active_lifecycle', label: $t('admin.lifecycle_recon.it_invalid_full') },
+  ]);
   const perPageOptions = [
     { value: '25', label: '25' },
     { value: '50', label: '50' },
@@ -123,7 +123,7 @@
     try {
       const result = await api.customers.reconciliation.repair(issueType);
       repairResult = result;
-      toast.success(`Cocok ${result.matched_count}, diperbaiki ${result.repaired_count}, dilewati ${result.skipped_count}, gagal ${result.failed_count}.`);
+      toast.success($t('admin.lifecycle_recon.t_repaired', { values: { m: result.matched_count, r: result.repaired_count, s: result.skipped_count, f: result.failed_count } }));
       await loadReport();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -141,15 +141,15 @@
 
   function repairConfirmMessage(): string {
     return pendingRepairType === 'invalid_active_lifecycle'
-      ? 'Suspend semua layanan dengan lifecycle aktif yang tidak valid? Tindakan ini berdampak ke pelanggan.'
-      : 'Buat invoice awal untuk semua layanan yang belum punya? Tindakan ini berdampak ke tagihan.';
+      ? $t('admin.lifecycle_recon.confirm_suspend')
+      : $t('admin.lifecycle_recon.confirm_boot');
   }
 </script>
-<AppShell title="Rekonsiliasi lifecycle">
+<AppShell title={ $t('admin.lifecycle_recon.title') }>
   <PageHeader
-    title="Rekonsiliasi lifecycle"
+    title={ $t('admin.lifecycle_recon.title') }
     eyebrow={ $t('admin.eyebrows.customers') }
-    desc="Layanan yang lifecycle-nya tidak sinkron dengan tagihan — periksa lalu perbaiki massal."
+    desc={ $t('admin.lifecycle_recon.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={() => void loadReport()} disabled={loading || repairing}>
@@ -175,17 +175,17 @@
   </PageHeader>
 
   <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    <StatTile label="Total masalah" value={String(report.total_issues)} hint="semua isu terbuka" tone="warning" />
-    <StatTile label="Belum ada invoice awal" value={String(report.missing_bootstrap_invoice)} hint="bisa diperbaiki massal" tone="warning" />
-    <StatTile label="Lifecycle aktif invalid" value={String(report.invalid_active_lifecycle)} hint="perlu suspend" tone="negative" />
-    <StatTile label="Baris tampil" value={String(report.data.length)} hint={`dari ${report.total_issues} masalah`} />
+    <StatTile label={ $t('admin.lifecycle_recon.st_total') } value={String(report.total_issues)} hint={ $t('admin.lifecycle_recon.h_open') } tone="warning" />
+    <StatTile label={ $t('admin.lifecycle_recon.it_missing') } value={String(report.missing_bootstrap_invoice)} hint={ $t('admin.lifecycle_recon.h_bulk') } tone="warning" />
+    <StatTile label={ $t('admin.lifecycle_recon.it_invalid') } value={String(report.invalid_active_lifecycle)} hint={ $t('admin.lifecycle_recon.h_susp') } tone="negative" />
+    <StatTile label={ $t('admin.lifecycle_recon.st_shown') } value={String(report.data.length)} hint={$t('admin.lifecycle_recon.h_of', { values: { n: report.total_issues } })} />
   </div>
 
-  <Card title="Filter">
+  <Card title={ $t('admin.lifecycle_recon.f_filter') }>
     <div class="grid gap-3 sm:grid-cols-3">
-      <Field id="rc-q" label="Cari" type="text" stacked value={q} onchange={(v) => { q = v; page = 0; void loadReport(); }} placeholder="Cari nama pelanggan…" />
-      <Field id="rc-issue" label="Jenis masalah" type="select" stacked value={issueFilter} options={issueOptions} onchange={(v) => void setIssueFilter(v as typeof issueFilter)} />
-      <Field id="rc-perpage" label="Per halaman" type="select" stacked value={String(perPage)} options={perPageOptions} onchange={(v) => { perPage = Number(v); page = 0; void loadReport(); }} />
+      <Field id="rc-q" label={ $t('common.search') } type="text" stacked value={q} onchange={(v) => { q = v; page = 0; void loadReport(); }} placeholder={ $t('admin.lifecycle_recon.ph_name') } />
+      <Field id="rc-issue" label={ $t('admin.lifecycle_recon.f_issue') } type="select" stacked value={issueFilter} options={issueOptions} onchange={(v) => void setIssueFilter(v as typeof issueFilter)} />
+      <Field id="rc-perpage" label={ $t('admin.lifecycle_recon.f_perpage') } type="select" stacked value={String(perPage)} options={perPageOptions} onchange={(v) => { perPage = Number(v); page = 0; void loadReport(); }} />
     </div>
   </Card>
 
@@ -194,12 +194,12 @@
   {/if}
 
   {#if repairResult}
-    <Card title="Hasil perbaikan terakhir">
+    <Card title={ $t('admin.lifecycle_recon.last_result') }>
       <div class="grid gap-3 sm:grid-cols-4">
-        <StatTile label="Cocok" value={String(repairResult.matched_count)} hint="kandidat ditemukan" />
-        <StatTile label="Diperbaiki" value={String(repairResult.repaired_count)} hint="berhasil" tone="positive" />
-        <StatTile label="Dilewati" value={String(repairResult.skipped_count)} hint="tidak perlu aksi" />
-        <StatTile label="Gagal" value={String(repairResult.failed_count)} hint="perlu tinjau manual" tone="negative" />
+        <StatTile label={ $t('admin.lifecycle_recon.r_match') } value={String(repairResult.matched_count)} hint={ $t('admin.lifecycle_recon.h_found') } />
+        <StatTile label={ $t('admin.lifecycle_recon.r_fixed') } value={String(repairResult.repaired_count)} hint={ $t('admin.lifecycle_recon.h_ok') } tone="positive" />
+        <StatTile label={ $t('admin.lifecycle_recon.r_skip') } value={String(repairResult.skipped_count)} hint={ $t('admin.lifecycle_recon.h_nact') } />
+        <StatTile label={ $t('admin.lifecycle_recon.r_fail') } value={String(repairResult.failed_count)} hint={ $t('admin.lifecycle_recon.h_manual') } tone="negative" />
       </div>
       {#if repairResult.errors.length > 0}
         <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-red-700">
@@ -235,13 +235,13 @@
           </div>
         {:else if column.key === 'issue'}
           <div>
-            <Badge tone="warning" label={lifecycleIssueLabel(item.issue_type)} />
+            <Badge tone="warning" label={lifecycleIssueLabel(item.issue_type, $t)} />
             <div class="mt-0.5 text-xs text-ink-400">{item.subscription_status}</div>
           </div>
         {:else if column.key === 'action'}
           <div class="flex items-center gap-2">
-            <span class="text-sm text-ink-700">{lifecycleActionLabel(item.recommended_action)}</span>
-            <Button variant="ghost" onclick={() => openCustomer(item)}>Buka layanan</Button>
+            <span class="text-sm text-ink-700">{lifecycleActionLabel(item.recommended_action, $t)}</span>
+            <Button variant="ghost" onclick={() => openCustomer(item)}>{ $t('admin.lifecycle_recon.open_service') }</Button>
           </div>
         {/if}
       {/snippet}
@@ -262,7 +262,7 @@
 
 <ConfirmDialog
   bind:show={repairConfirmOpen}
-  title="Jalankan perbaikan massal?"
+  title={ $t('admin.lifecycle_recon.confirm_title') }
   message={repairConfirmMessage()}
   confirmText="Jalankan"
   cancelText="Batal"

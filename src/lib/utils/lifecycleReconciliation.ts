@@ -6,16 +6,16 @@
  */
 export type LifecycleIssueType = 'missing_bootstrap_invoice' | 'invalid_active_lifecycle';
 
-export function lifecycleIssueLabel(issueType: string): string {
-  if (issueType === 'missing_bootstrap_invoice') return 'Belum ada invoice awal';
-  if (issueType === 'invalid_active_lifecycle') return 'Lifecycle aktif tidak valid';
+export function lifecycleIssueLabel(issueType: string, tt?: (k: string) => string): string {
+  if (issueType === 'missing_bootstrap_invoice') return tt?.('admin.lifecycle_recon.it_missing') ?? 'Belum ada invoice awal';
+  if (issueType === 'invalid_active_lifecycle') return tt?.('admin.lifecycle_recon.it_invalid') ?? 'Lifecycle aktif tidak valid';
   return issueType;
 }
 
-export function lifecycleActionLabel(action: string): string {
-  if (action === 'bootstrap_invoice') return 'Buat invoice awal';
-  if (action === 'review_lifecycle_data') return 'Tinjau data lifecycle';
-  if (action === 'suspend_invalid_active_lifecycle') return 'Suspend layanan';
+export function lifecycleActionLabel(action: string, tt?: (k: string) => string): string {
+  if (action === 'bootstrap_invoice') return tt?.('admin.lifecycle_recon.ac_boot') ?? 'Buat invoice awal';
+  if (action === 'review_lifecycle_data') return tt?.('admin.lifecycle_recon.ac_review') ?? 'Tinjau data lifecycle';
+  if (action === 'suspend_invalid_active_lifecycle') return tt?.('admin.lifecycle_recon.ac_suspend') ?? 'Suspend layanan';
   return action;
 }
 
