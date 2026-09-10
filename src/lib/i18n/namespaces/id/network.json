@@ -371,8 +371,40 @@
     "disk": "DISK",
     "wallboard_settings": "Pengaturan tampilan NOC live.",
     "v2": {
-      "live_loading": "Live · memuat…"
-    }
+      "live_loading": "Live · memuat…",
+      "title": "NOC · Pantauan",
+      "desc": "Pantauan kesehatan router — disegarkan tiap 5 detik.",
+      "h_online": "{a} online",
+      "h_from": "dari {t} router",
+      "st_total": "Total router",
+      "st_online": "Online",
+      "st_offline": "Offline",
+      "h_followup": "perlu tindak lanjut",
+      "st_hot": "Panas",
+      "h_hot": "CPU ≥ {c}% atau latensi ≥ {l} ms",
+      "f_filter": "Filter",
+      "reset": "Atur ulang",
+      "all_status": "Semua status",
+      "all_risk": "Semua risiko",
+      "sort_worst": "Paling bermasalah",
+      "sort_seen": "Terakhir terlihat",
+      "col_router": "Router",
+      "col_status": "Status",
+      "col_health": "Kesehatan",
+      "col_traffic": "Trafik",
+      "col_latency": "Latensi",
+      "card_routers": "Router ({n})",
+      "maintenance": "Maintenance",
+      "auto_on": "Auto-refresh aktif",
+      "f_risk": "Risiko",
+      "f_sort": "Urut",
+      "risk_cpu": "CPU ≥ {c}%",
+      "risk_hot": "Panas (kritis)",
+      "risk_lat": "Latensi ≥ {l} ms",
+      "sort_lat": "Latensi tertinggi",
+      "sort_cpu": "CPU tertinggi"
+    },
+    "appshell_title": "NOC"
   },
   "dhcp": {
     "title": "Pantau lease DHCP static."

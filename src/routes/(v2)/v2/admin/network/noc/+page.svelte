@@ -61,15 +61,15 @@
     tx_bps?: number | null;
   };
 
-  const columns: Column[] = [
-    { key: 'router', label: 'Router' },
-    { key: 'status', label: 'Status' },
-    { key: 'health', label: 'Kesehatan' },
-    { key: 'traffic', label: 'Trafik' },
-    { key: 'latency', label: 'Latensi' },
-    { key: 'seen', label: 'Terakhir terlihat' },
+  const columns = $derived<Column[]>([
+    { key: 'router', label: $t('network.noc.v2.col_router') },
+    { key: 'status', label: $t('network.noc.v2.col_status') },
+    { key: 'health', label: $t('network.noc.v2.col_health') },
+    { key: 'traffic', label: $t('network.noc.v2.col_traffic') },
+    { key: 'latency', label: $t('network.noc.v2.col_latency') },
+    { key: 'seen', label: $t('network.noc.v2.sort_seen') },
     { key: 'actions', label: '' },
-  ];
+  ]);
 
   let loading = $state(true);
   let refreshing = $state(false);
@@ -87,23 +87,23 @@
   const th = $derived<NocThresholds>({ cpuRisk, cpuHot, latRisk, latHot });
   const canUseTenantSettings = $derived($can('read', 'settings') || $can('update', 'settings'));
 
-  const statusOptions = [
-    { value: 'all', label: 'Semua status' },
-    { value: 'online', label: 'Online' },
-    { value: 'offline', label: 'Offline' },
-  ];
-  const riskOptions = [
-    { value: 'all', label: 'Semua risiko' },
-    { value: 'hot', label: 'Panas (kritis)' },
-    { value: 'latency', label: `Latensi ≥ ${latRisk} ms` },
-    { value: 'cpu', label: `CPU ≥ ${cpuRisk}%` },
-  ];
-  const sortOptions = [
-    { value: 'health_desc', label: 'Paling bermasalah' },
-    { value: 'last_seen_desc', label: 'Terakhir terlihat' },
-    { value: 'latency_desc', label: 'Latensi tertinggi' },
-    { value: 'cpu_desc', label: 'CPU tertinggi' },
-  ];
+  const statusOptions = $derived([
+    { value: 'all', label: $t('network.noc.v2.all_status') },
+    { value: 'online', label: $t('network.noc.v2.st_online') },
+    { value: 'offline', label: $t('network.noc.v2.st_offline') },
+  ]);
+  const riskOptions = $derived([
+    { value: 'all', label: $t('network.noc.v2.all_risk') },
+    { value: 'hot', label: $t('network.noc.v2.risk_hot') },
+    { value: 'latency', label: $t('network.noc.v2.risk_lat', { values: { l: latRisk } }) },
+    { value: 'cpu', label: $t('network.noc.v2.risk_cpu', { values: { c: cpuRisk } }) },
+  ]);
+  const sortOptions = $derived([
+    { value: 'health_desc', label: $t('network.noc.v2.sort_worst') },
+    { value: 'last_seen_desc', label: $t('network.noc.v2.sort_seen') },
+    { value: 'latency_desc', label: $t('network.noc.v2.sort_lat') },
+    { value: 'cpu_desc', label: $t('network.noc.v2.sort_cpu') },
+  ]);
 
   const filtered = $derived.by(() => {
     let out = rows.slice();
@@ -211,11 +211,11 @@
     }
   }
 </script>
-<AppShell title="NOC">
+<AppShell title={ $t('network.noc.appshell_title') }>
   <PageHeader
-    title="NOC"
+    title={ $t('network.noc.v2.title') }
     eyebrow={ $t('admin.eyebrows.network') }
-    desc="Pantauan kesehatan router — disegarkan tiap 5 detik."
+    desc={ $t('network.noc.v2.desc') }
   >
     {#snippet actions()}
       <Button variant="ghost" href="/v2/admin/network/alerts">Alert</Button>
@@ -228,27 +228,27 @@
   </PageHeader>
 
   <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-    <StatTile label="Total router" value={String(stats.total)} hint={`${stats.online} online`} />
-    <StatTile label="Online" value={String(stats.online)} hint={`dari ${stats.total} router`} tone="positive" />
-    <StatTile label="Offline" value={String(stats.offline)} hint="perlu tindak lanjut" tone="negative" />
-    <StatTile label="Panas" value={String(stats.hot)} hint={`CPU ≥ ${cpuHot}% atau latensi ≥ ${latHot} ms`} tone="warning" />
+    <StatTile label={ $t('network.noc.v2.st_total') } value={String(stats.total)} hint={ $t('network.noc.v2.h_online', { values: { a: stats.online } }) } />
+    <StatTile label={ $t('network.noc.v2.st_online') } value={String(stats.online)} hint={ $t('network.noc.v2.h_from', { values: { t: stats.total } }) } tone="positive" />
+    <StatTile label={ $t('network.noc.v2.st_offline') } value={String(stats.offline)} hint={ $t('network.noc.v2.h_followup') } tone="negative" />
+    <StatTile label={ $t('network.noc.v2.st_hot') } value={String(stats.hot)} hint={ $t('network.noc.v2.h_hot', { values: { c: cpuHot, l: latHot } }) } tone="warning" />
   </div>
 
-  <Card title="Filter">
+  <Card title={ $t('network.noc.v2.f_filter') }>
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Field id="noc-status" label="Status" type="select" stacked value={statusFilter} options={statusOptions} onchange={(v) => (statusFilter = v as typeof statusFilter)} />
-      <Field id="noc-risk" label="Risiko" type="select" stacked value={riskFilter} options={riskOptions} onchange={(v) => (riskFilter = v as typeof riskFilter)} />
-      <Field id="noc-sort" label="Urut" type="select" stacked value={sortFilter} options={sortOptions} onchange={(v) => (sortFilter = v as typeof sortFilter)} />
+      <Field id="noc-status" label={ $t('network.noc.v2.col_status') } type="select" stacked value={statusFilter} options={statusOptions} onchange={(v) => (statusFilter = v as typeof statusFilter)} />
+      <Field id="noc-risk" label={ $t('network.noc.v2.f_risk') } type="select" stacked value={riskFilter} options={riskOptions} onchange={(v) => (riskFilter = v as typeof riskFilter)} />
+      <Field id="noc-sort" label={ $t('network.noc.v2.f_sort') } type="select" stacked value={sortFilter} options={sortOptions} onchange={(v) => (sortFilter = v as typeof sortFilter)} />
       <div class="flex items-end">
-        <Button variant="ghost" onclick={resetFilters}>Atur ulang</Button>
+        <Button variant="ghost" onclick={resetFilters}>{ $t('network.noc.v2.reset') }</Button>
       </div>
     </div>
   </Card>
 
-  <Card title={`Router (${filtered.length})`} padded={false}>
+  <Card title={ $t('network.noc.v2.card_routers', { values: { n: filtered.length } }) } padded={false}>
     {#snippet aside()}
       <span class="flex items-center gap-1.5 text-xs text-ink-400">
-        <span class="relative flex h-2 w-2" aria-label="Auto-refresh aktif">
+        <span class="relative flex h-2 w-2" aria-label={ $t('network.noc.v2.auto_on') }>
           <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"></span>
           <span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
         </span>
@@ -271,13 +271,13 @@
             <div class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-ink-400">
               {#if item.identity}<span class="font-mono">{item.identity}</span>{/if}
               {#if item.ros_version}<span>ROS {item.ros_version}</span>{/if}
-              {#if nocInMaintenance(item)}<Badge tone="info" label="Maintenance" />{/if}
+              {#if nocInMaintenance(item)}<Badge tone="info" label={ $t('network.noc.v2.maintenance') } />{/if}
             </div>
             <div class="font-mono text-xs text-ink-400">{item.host}:{item.port}</div>
             {#if item.last_error}<div class="text-xs text-red-600">{item.last_error}</div>{/if}
           </div>
         {:else if column.key === 'status'}
-          <Badge tone={item.is_online ? 'positive' : 'negative'} label={item.is_online ? 'Online' : 'Offline'} />
+          <Badge tone={item.is_online ? 'positive' : 'negative'} label={item.is_online ? $t('network.noc.v2.st_online') : $t('network.noc.v2.st_offline')} />
         {:else if column.key === 'health'}
           {@const cpu = item.cpu_load ?? null}
           {@const mem = nocMemoryPct(item.total_memory_bytes, item.free_memory_bytes)}
@@ -300,7 +300,7 @@
           {/if}
         {:else if column.key === 'actions'}
           <RowActions
-            primary={{ label: 'Buka', icon: 'chevronRight', onclick: () => openRouter(item.id) }}
+            primary={{ label: $t('common.open'), icon: 'chevronRight', onclick: () => openRouter(item.id) }}
             rest={[]}
           />
         {/if}

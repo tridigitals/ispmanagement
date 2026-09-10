@@ -371,8 +371,40 @@
     "disk": "DISK",
     "wallboard_settings": "NOC live display settings.",
     "v2": {
-      "live_loading": "Live · loading…"
-    }
+      "live_loading": "Live · loading…",
+      "title": "NOC · Monitoring",
+      "desc": "Router health monitor — refreshed every 5 seconds.",
+      "h_online": "{a} online",
+      "h_from": "of {t} routers",
+      "st_total": "Total routers",
+      "st_online": "Online",
+      "st_offline": "Offline",
+      "h_followup": "needs follow-up",
+      "st_hot": "Hot",
+      "h_hot": "CPU ≥ {c}% or latency ≥ {l} ms",
+      "f_filter": "Filter",
+      "reset": "Reset",
+      "all_status": "All statuses",
+      "all_risk": "All risks",
+      "sort_worst": "Worst first",
+      "sort_seen": "Last seen",
+      "col_router": "Router",
+      "col_status": "Status",
+      "col_health": "Health",
+      "col_traffic": "Traffic",
+      "col_latency": "Latency",
+      "card_routers": "Routers ({n})",
+      "maintenance": "Maintenance",
+      "auto_on": "Auto-refresh on",
+      "f_risk": "Risk",
+      "f_sort": "Sort",
+      "risk_cpu": "CPU ≥ {c}%",
+      "risk_hot": "Hot (critical)",
+      "risk_lat": "Latency ≥ {l} ms",
+      "sort_lat": "Highest latency",
+      "sort_cpu": "Highest CPU"
+    },
+    "appshell_title": "NOC"
   },
   "dhcp": {
     "title": "Monitor DHCP static leases."
