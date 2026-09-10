@@ -787,7 +787,7 @@
     const asset = topologyAssetItems.find((item) => item.id === assetId);
     if (!asset) {
       toast.error(
-        'Data aset FTTH tidak ditemukan.',
+        $t('network.map.v2.e_asset_missing'),
       );
       return;
     }
@@ -1131,7 +1131,7 @@
       const nodeId = await ensureTopologyAssetNodeId(assetId);
       if (!nodeId) {
         toast.error(
-          'Node aset FTTH belum tersinkron ke peta topologi.',
+          $t('network.map.v2.e_not_synced'),
         );
         return;
       }
@@ -1312,7 +1312,7 @@
     const asset = topologyAssetItems.find((item) => item.id === assetId);
     if (!asset) {
       toast.error(
-        'Data aset FTTH tidak ditemukan.',
+        $t('network.map.v2.e_asset_missing'),
       );
       return;
     }
@@ -1335,7 +1335,7 @@
     activeNodePopup?.remove();
     if (assetCreatePickMode) {
       assetCreatePickMode = false;
-      toast.info('Penambahan aset dibatalkan.');
+      toast.info($t('network.map.v2.i_add_cancelled'));
       return;
     }
     showAssetFormModal = false;
@@ -1349,7 +1349,7 @@
       syncLinkDraftPreview();
     }
     toast.info(
-      'Klik titik di peta untuk menambah aset FTTH baru.',
+      $t('network.map.v2.i_click_to_add'),
     );
   }
 
@@ -2081,7 +2081,7 @@
   function openEditNodeModal(row: NMNode) {
     if (isSystemManagedNode(row)) {
       toast.info(
-        `Node ini tersinkron dari ${systemManagedNodeSourceLabel(row) || 'asset map'}. Ubah dari sumbernya.`,
+        $t('network.map.v2.i_synced_from', { values: { src: systemManagedNodeSourceLabel(row) || $t('network.map.v2.src_asset_map') } }),
       );
       return;
     }
@@ -2214,7 +2214,7 @@
     linkPickStep = 'from';
     linkPathBendPoints = [];
     syncLinkDraftPreview();
-    toast.info('Gambar link dibatalkan.');
+    toast.info($t('network.map.v2.i_link_cancelled'));
   }
 
   function handleLinkPickNode(nodeId: string) {
@@ -2343,7 +2343,7 @@
     const nodeId = await ensureTopologyAssetNodeId(assetId);
     if (!nodeId) {
       toast.error(
-        'Node aset FTTH belum tersedia di peta topologi.',
+        $t('network.map.v2.e_node_missing'),
       );
       return;
     }
@@ -2424,7 +2424,7 @@
         const sourceNodeId = await ensureTopologyAssetNodeId(activeAssetConnectSourceId);
         if (!sourceNodeId) {
           toast.error(
-            'Node ODP sumber tidak tersedia di peta topologi.',
+            $t('network.map.v2.e_odp_missing'),
           );
           return;
         }
@@ -2589,8 +2589,8 @@
     {loading}
     {mapUnavailable}
     {mapErrorMessage}
-    mapUnavailableTitle={'Peta tidak tersedia'}
-    mapUnavailableSubtitle={'Pratinjau peta tidak tersedia di perangkat ini.'}
+    mapUnavailableTitle={$t('network.map.v2.unavailable')}
+    mapUnavailableSubtitle={$t('network.map.v2.unavailable_hint')}
     height={compactMode ? 'min(82vh, 820px)' : 'calc(100vh - 120px)'}
   >
     <svelte:fragment slot="overlay">
@@ -2599,21 +2599,21 @@
         <div class="nm-brand">
           <span class="nm-brand-ico"><Icon name="network" size={14} /></span>
           <span class="nm-brand-txt">
-            <span class="nm-brand-title">{'Peta Jaringan'}</span>
+            <span class="nm-brand-title">{$t('network.map.v2.title')}</span>
             <span class="nm-brand-sub" class:fresh={freshnessTone === 'fresh'} class:warn={freshnessTone === 'warn'} title={workspaceStatusNotes[0] || ''}>
               {freshnessLabel}
             </span>
           </span>
         </div>
         <div class="nm-chips">
-          <span class="nm-chip" title={'Jumlah node'}><b>{nodeCount}</b><i>NODE</i></span>
-          <span class="nm-chip" title={'Jumlah link'}><b>{linkCount}</b><i>LINK</i></span>
+          <span class="nm-chip" title={$t('network.map.v2.legend_nodes')}><b>{nodeCount}</b><i>NODE</i></span>
+          <span class="nm-chip" title={$t('network.map.v2.legend_links')}><b>{linkCount}</b><i>LINK</i></span>
           {#if mapAlertCount > 0}
-            <button type="button" class="nm-chip alert" onclick={focusNextProblem} title={'Fokus ke masalah berikutnya (klik berulang untuk berpindah)'}>
+            <button type="button" class="nm-chip alert" onclick={focusNextProblem} title={$t('network.map.v2.focus_next')}>
               <b>{mapAlertCount}</b><i>ALERT</i>
             </button>
           {:else}
-            <span class="nm-chip ok" title={'Tidak ada node/link bermasalah'}><Icon name="check" size={12} /><i>SEHAT</i></span>
+            <span class="nm-chip ok" title={$t('network.map.v2.no_issues')}><Icon name="check" size={12} /><i>SEHAT</i></span>
           {/if}
         </div>
         {#if fromInstallation}
@@ -2625,23 +2625,23 @@
             query={workspaceSearchQuery}
             groups={workspaceSearchGroups}
             summary=""
-            placeholder={'Cari node, pelanggan, alamat…'}
-            emptyTitle={'Tidak ada hasil'}
-            emptyHint={'Coba kata kunci lain.'}
+            placeholder={$t('network.map.v2.search_ph')}
+            emptyTitle={$t('network.map.v2.no_results')}
+            emptyHint={$t('network.map.v2.no_results_hint')}
             onQueryChange={(value: string) => (workspaceSearchQuery = value)}
             onSelect={handleWorkspaceSearchSelect}
           />
         </div>
-        <div class="nm-seg" role="group" aria-label={'Tampilan peta'}>
-          <button type="button" class="nm-seg-btn" class:on={viewMode === 'standard'} onclick={() => (viewMode = 'standard')}>{'Standar'}</button>
-          <button type="button" class="nm-seg-btn" class:on={viewMode === 'satellite'} onclick={() => (viewMode = 'satellite')}>{'Satelit'}</button>
+        <div class="nm-seg" role="group" aria-label={$t('network.map.v2.view_aria')}>
+          <button type="button" class="nm-seg-btn" class:on={viewMode === 'standard'} onclick={() => (viewMode = 'standard')}>{ $t('network.map.v2.view_std') }</button>
+          <button type="button" class="nm-seg-btn" class:on={viewMode === 'satellite'} onclick={() => (viewMode = 'satellite')}>{ $t('network.map.v2.view_sat') }</button>
         </div>
         <button
           type="button"
           class="nm-btn"
           class:on={!controlsHidden}
           onclick={() => (controlsHidden = !controlsHidden)}
-          title={'Lapisan peta'}
+          title={$t('network.map.v2.layers')}
         >
           <Icon name="layers" size={14} />
         </button>
@@ -2651,12 +2651,12 @@
             class="nm-btn"
             onclick={() => queueManualTopologySync()}
             disabled={syncingAssetNodes || refreshing || loading}
-            title={'Sinkron aset topologi'}
+            title={$t('network.map.v2.sync_assets')}
           >
             <Icon name="refresh-cw" size={14} />
           </button>
         {/if}
-        <a class="nm-btn" href={`${tenantPrefix}/admin/network/noc`} title={'Kembali ke NOC'}>
+        <a class="nm-btn" href={`${tenantPrefix}/admin/network/noc`} title={$t('network.map.v2.back_noc')}>
           <Icon name="monitor" size={14} />
         </a>
       </div>
@@ -2668,17 +2668,17 @@
               showPill={false}
               showView={false}
               labels={{
-                title: 'Kontrol peta',
-                layers: 'Lapisan',
-                view: 'Tampilan',
-                standard: 'Standar',
-                satellite: 'Satelit',
-                nodes: 'Node',
-                links: 'Link',
-                zones: 'Zona',
-                assets: 'Aset FTTH',
-                routers: 'Router',
-                customers: 'Pelanggan',
+                title: $t('network.map.v2.controls_aria'),
+                layers: $t('network.map.v2.layers_tab'),
+                view: $t('network.map.v2.view_tab'),
+                standard: $t('network.map.v2.view_std'),
+                satellite: $t('network.map.v2.view_sat'),
+                nodes: $t('network.map.v2.layer_nodes'),
+                links: $t('network.map.v2.layer_links'),
+                zones: $t('network.map.v2.layer_zones'),
+                assets: $t('network.map.v2.layer_assets'),
+                routers: $t('network.map.v2.layer_routers'),
+                customers: $t('network.map.v2.layer_customers'),
               }}
               hidden={controlsHidden}
               {viewMode}
@@ -2710,8 +2710,8 @@
               <Icon name={assetCreatePickMode ? 'x-circle' : 'plus'} size={14} />
               <span>
                 {assetCreatePickMode
-                  ? 'Batal tambah'
-                  : 'Tambah aset'}
+                  ? $t('network.map.v2.cancel_add')
+                  : $t('network.map.v2.add_asset')}
               </span>
             </button>
           {/if}
@@ -2722,22 +2722,22 @@
         <div class="map-asset-create-hint">
           <Icon name="map-pin" size={14} />
           <span
-            >{'Klik titik di peta untuk menambah aset FTTH baru.'}</span
+            >{ $t('network.map.v2.i_click_to_add') }</span
           >
         </div>
       {/if}
 
       <!-- Legenda selalu tampil: operator tak perlu buka panel utk baca warna. -->
-      <div class="nm-legend" aria-label={'Legenda peta'}>
+      <div class="nm-legend" aria-label={$t('network.map.v2.legend_aria')}>
         <div class="nm-legend-title">{'LEGENDA'}</div>
-        <div class="nm-legend-row"><i class="ln" style="background:#67e8f9"></i>{'Link normal'}</div>
+        <div class="nm-legend-row"><i class="ln" style="background:#67e8f9"></i>{$t('network.map.v2.lg_link_ok')}</div>
         <div class="nm-legend-row"><i class="ln" style="background:#fbbf24"></i>{'Warning (>80%)'}</div>
         <div class="nm-legend-row"><i class="ln" style="background:#f87171"></i>{'Down / kritis'}</div>
         <div class="nm-legend-sep"></div>
-        <div class="nm-legend-row"><i class="dt" style="background:#34d399"></i>{'Node aktif'}</div>
-        <div class="nm-legend-row"><i class="dt ring"></i>{'Node bermasalah'}</div>
+        <div class="nm-legend-row"><i class="dt" style="background:#34d399"></i>{$t('network.map.v2.lg_node_ok')}</div>
+        <div class="nm-legend-row"><i class="dt ring"></i>{$t('network.map.v2.lg_node_bad')}</div>
         <div class="nm-legend-row"><i class="dt" style="background:#a78bfa"></i>{'Aset FTTH'}</div>
-        <div class="nm-legend-row"><i class="dt cl"></i>{'Cluster'}</div>
+        <div class="nm-legend-row"><i class="dt cl"></i>{$t('network.map.v2.lg_cluster')}</div>
       </div>
 
       {#if NodePanelComponent}
@@ -2768,7 +2768,7 @@
           {/if}
           <button class="btn ghost btn-xs danger" type="button" onclick={cancelLinkPicking}>
             <Icon name="x-circle" size={14} />
-            {'Batal'}
+            { $t('common.cancel') }
           </button>
         </div>
       {/if}
@@ -2846,8 +2846,8 @@
     show={showDeleteConfirm}
     title={deleteConfirmTitle}
     message={deleteConfirmMessage}
-    confirmText={'Hapus'}
-    cancelText={'Batal'}
+    confirmText={ $t('common.delete') }
+    cancelText={ $t('common.cancel') }
     type="danger"
     loading={Boolean(deletingId)}
     onconfirm={() => void confirmDeleteAction()}
