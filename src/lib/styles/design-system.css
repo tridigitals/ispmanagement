@@ -166,6 +166,11 @@
    * dengan teks putih (2,53:1 di atas ungu lama -> 7,0:1 di atas brand-600).
    */
   .v2-light {
+    /* Warna teks default utk turunan: reset DS memberi button
+       `color: inherit`, dan tanpa baris ini inherit-nya nyangkut di
+       body (token gelap legacy) -> tombol .btn di modal notifikasi
+       nyaris tak terlihat di atas surface putih (laporan Tri 2026-09-11). */
+    color: var(--text-primary);
     --bg-surface: var(--color-ink-0);
     --bg-primary: var(--color-ink-0);
     --bg-secondary: var(--color-ink-100);
