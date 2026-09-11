@@ -224,6 +224,11 @@
         page = p;
         load();
       }}
+      onpagesize={(n) => {
+        perPage = n;
+        page = 1;
+        load();
+      }}
       emptyTitle={ $t('admin.customers.list_v2.empty_title') }
       emptyHint={q ? $t('common.no_results_for', { values: { q } }) : $t('admin.customers.list_v2.empty_hint')}
       footNote={ $t('admin.customers.list_v2.foot', { values: { n: total } }) }

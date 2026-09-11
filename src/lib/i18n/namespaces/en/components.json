@@ -81,7 +81,8 @@
     "rows_per_page": "Rows per page:",
     "range": "{start}-{end} of {count}",
     "previous_page": "Previous page",
-    "next_page": "Next page"
+    "next_page": "Next page",
+    "rows_per_page_aria": "Rows per page"
   },
   "mobile_fab": {
     "open_menu": "Open menu"

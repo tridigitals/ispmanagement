@@ -11,6 +11,7 @@
   import TableSkeleton from './TableSkeleton.svelte';
   import Icon from './Icon.svelte';
   import type { Column } from './table-types';
+  import { t } from 'svelte-i18n';
 
   interface Props {
     columns: Column[];
@@ -32,6 +33,9 @@
     page?: number;
     /** Mode server: bila diisi, rows TIDAK di-slice — parent yang fetch. */
     onpage?: (p: number) => void;
+    /** Mode server: dipanggil saat user mengganti ukuran halaman; parent
+     *  fetch ulang dengan per_page baru + reset ke halaman 1. */
+    onpagesize?: (n: number) => void;
     /** Total baris untuk mode server (default: rows.length). */
     total?: number;
   }
@@ -50,6 +54,7 @@
     pageSizeOptions = [10, 25, 50, 100],
     page,
     onpage,
+    onpagesize,
     total,
   }: Props = $props();
 
@@ -90,8 +95,19 @@
 
   function changeSize(ev: Event) {
     const v = Number((ev.target as HTMLSelectElement).value);
+    if (serverMode) {
+      if (onpagesize && Number.isFinite(v) && v > 0) onpagesize(v);
+      return;
+    }
     sizeOverride = Number.isFinite(v) && v > 0 ? v : pageSize;
     innerPage = 1;
+  }
+
+  /** Terjemahan dgn fallback — re-aktif terhadap pergantian locale. */
+  const tr = $derived($t);
+  function tt(key: string, fallback: string) {
+    const v = tr(key);
+    return typeof v === 'string' && v ? v : fallback;
   }
 </script>
 
@@ -155,35 +171,45 @@
     {/if}
   </div>
 
-  {#if size > 0 && !loading && effectiveTotal > size}
+  {#if size > 0 && !loading && effectiveTotal > Math.min(size, ...pageSizeOptions)}
+    {@const showSizeSelect = serverMode ? onpagesize !== undefined : true}
+    {@const rangeText = tt(
+      'components.pagination.range',
+      '{start}–{end} dari {count}',
+    )
+      .replace('{start}', String(rangeStart))
+      .replace('{end}', String(rangeEnd))
+      .replace('{count}', String(effectiveTotal))}
     <div
       class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-4 py-2.5 text-sm
         {dark
         ? 'border-white/8 bg-night-100 text-slate-400'
         : 'border-ink-200 bg-ink-50 text-ink-500'}"
     >
-      {#if !serverMode}
-      <label class="flex items-center gap-2 whitespace-nowrap">
-        <span>Baris / hal</span>
-        <select
-          class="rounded-lg border px-2 py-1 text-sm font-medium outline-none
-            {dark
-            ? 'border-white/10 bg-night-200 text-slate-200'
-            : 'border-ink-200 bg-white text-ink-700'}"
-          value={size}
-          onchange={changeSize}
-          aria-label="Baris per halaman"
-        >
-          {#each pageSizeOptions as n}
-            <option value={n}>{n}</option>
-          {/each}
-        </select>
-      </label>
+      {#if showSizeSelect}
+        <label class="flex items-center gap-2 whitespace-nowrap">
+          <span>{tt('components.pagination.rows_per_page', 'Baris / hal')}</span>
+          <select
+            class="rounded-lg border px-2 py-1 text-sm font-medium outline-none
+              {dark
+              ? 'border-white/10 bg-night-200 text-slate-200'
+              : 'border-ink-200 bg-white text-ink-700'}"
+            value={size}
+            onchange={changeSize}
+            aria-label={tt('components.pagination.rows_per_page_aria', 'Baris per halaman')}
+          >
+            {#each pageSizeOptions as n}
+              <option value={n}>{n}</option>
+            {/each}
+          </select>
+        </label>
+      {:else}
+        <span class="whitespace-nowrap">{rangeText}</span>
       {/if}
       <div class="flex items-center gap-3">
-        <span class="whitespace-nowrap tabular-nums">
-          {rangeStart}–{rangeEnd} dari {effectiveTotal}
-        </span>
+        {#if showSizeSelect}
+          <span class="whitespace-nowrap tabular-nums">{rangeText}</span>
+        {/if}
         <div class="flex items-center gap-1">
           <button
             type="button"
@@ -194,7 +220,8 @@
               : 'border-ink-200 text-ink-600 hover:bg-ink-100'}"
             disabled={currentPage <= 1}
             onclick={() => goto(currentPage - 1)}
-            aria-label="Halaman sebelumnya"
+            aria-label={tt('components.pagination.previous_page', 'Halaman sebelumnya')}
+            title={tt('components.pagination.previous_page', 'Halaman sebelumnya')}
           >
             <Icon name="chevronLeft" size={16} />
           </button>
@@ -210,7 +237,8 @@
               : 'border-ink-200 text-ink-600 hover:bg-ink-100'}"
             disabled={currentPage >= pageCount}
             onclick={() => goto(currentPage + 1)}
-            aria-label="Halaman berikutnya"
+            aria-label={tt('components.pagination.next_page', 'Halaman berikutnya')}
+            title={tt('components.pagination.next_page', 'Halaman berikutnya')}
           >
             <Icon name="chevronRight" size={16} />
           </button>

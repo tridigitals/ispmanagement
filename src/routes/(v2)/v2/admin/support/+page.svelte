@@ -70,7 +70,7 @@
   let ready = $state(false);
   let seq = 0;
 
-  const PER_PAGE = 25;
+  let PER_PAGE = $state(25);
 
   const cards = $derived(buildStatCards(stats, (k, v) => $t(k, v ? { values: v } : undefined)));
   const showPending = $derived(shouldShowPending(stats));
@@ -287,6 +287,11 @@
         {total}
         onpage={(p) => {
           pageNum = p;
+          void load(false);
+        }}
+        onpagesize={(n) => {
+          PER_PAGE = n;
+          pageNum = 1;
           void load(false);
         }}
         emptyTitle={ $t('support.admin_v2.empty_title') }

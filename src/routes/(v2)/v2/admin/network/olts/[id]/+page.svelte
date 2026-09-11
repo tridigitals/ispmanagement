@@ -337,7 +337,7 @@
       {#if stats?.pon_ports && stats.pon_ports.length > 0}
         <div class="mt-4">
           <Card title={ $t('network.olt.pon_ports') }>
-            <DataTable
+            <DataTable pageSize={25}
               columns={[
                 { key: 'name', label: $t('network.olt.v2.col_port') },
                 { key: 'total', label: 'ONU', align: 'right', num: true },
@@ -360,7 +360,7 @@
       {/if}
     {:else if activeTab === 'onus'}
       <Card>
-        <DataTable
+        <DataTable pageSize={25}
           columns={onuColumns}
           rows={sortedOnus}
           emptyTitle="Belum ada data ONU"
@@ -402,7 +402,7 @@
       </Card>
     {:else if activeTab === 'history'}
       <Card>
-        <DataTable
+        <DataTable pageSize={25}
           columns={historyColumns}
           rows={history}
           loading={historyLoading}

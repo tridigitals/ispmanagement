@@ -251,7 +251,7 @@
   </Card>
 
   <Card title={`Alert (${filtered.length})`} padded={false}>
-    <DataTable
+    <DataTable pageSize={25}
       {columns}
       rows={filtered}
       {loading}

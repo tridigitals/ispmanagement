@@ -637,7 +637,7 @@
             </button>
           {/each}
         </div>
-        <DataTable
+        <DataTable pageSize={25}
           columns={interfaceCols}
           rows={interfaceTableRows}
           emptyTitle="Tidak ada interface"
@@ -658,7 +658,7 @@
       </div>
     {:else if activeTab === 'ip'}
       <div class="mt-4">
-        <DataTable
+        <DataTable pageSize={25}
           columns={ipCols}
           rows={ipTableRows}
           emptyTitle="Tidak ada alamat IP"
@@ -681,7 +681,7 @@
       </div>
     {:else if activeTab === 'metrics'}
       <div class="mt-4">
-        <DataTable columns={metricCols} rows={metricRows} emptyTitle={ $t('admin.network.routers.v2d.no_metrics') } emptyHint={ $t('admin.network.routers.v2d.metrics_hint') } />
+        <DataTable pageSize={25} columns={metricCols} rows={metricRows} emptyTitle={ $t('admin.network.routers.v2d.no_metrics') } emptyHint={ $t('admin.network.routers.v2d.metrics_hint') } />
       </div>
     {/if}
   {/if}

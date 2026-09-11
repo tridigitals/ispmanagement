@@ -227,7 +227,7 @@
         <Button variant="ghost" icon="refresh" onclick={() => void scan()} disabled={loading}>{ $t('admin.network.pppoe.import.v2.rescan') }</Button>
         <Button variant="primary" icon="download" loading={loading} onclick={() => void runImport()} disabled={loading || selected.size === 0}>{$t('admin.network.pppoe.import.v2.btn_import', { values: { n: selected.size } })}</Button>
       </div>
-      <DataTable
+      <DataTable pageSize={25}
         {columns}
         rows={candidates.map((c) => ({
           id: c.username,

@@ -255,7 +255,7 @@
         {lastRefreshAt ? 'Live · ' + timeAgo(new Date(lastRefreshAt), (k) => $t(k)) : $t('network.noc.v2.live_loading')}
       </span>
     {/snippet}
-    <DataTable
+    <DataTable pageSize={25}
       {columns}
       rows={filtered}
       {loading}

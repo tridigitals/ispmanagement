@@ -587,7 +587,7 @@
         </div>
       </div>
 
-      <DataTable
+      <DataTable pageSize={25}
         {columns}
         rows={filtered}
         {loading}

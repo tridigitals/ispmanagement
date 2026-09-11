@@ -332,7 +332,7 @@
         {:else if collectionRows.length === 0}
           <p class="py-8 text-center text-sm text-ink-500">{ $t('admin.billing_collection.v2.empty1') }</p>
         {:else}
-          <DataTable
+          <DataTable pageSize={25}
             columns={[
               { key: 'time', label: $t('admin.billing_collection.columns.time') },
               { key: 'invoice', label: $t('admin.billing_collection.columns.invoice') },
@@ -379,7 +379,7 @@
         {:else if reminderRows.length === 0}
           <p class="py-8 text-center text-sm text-ink-500">{ $t('admin.billing_collection.v2.empty2') }</p>
         {:else}
-          <DataTable
+          <DataTable pageSize={25}
             columns={[
               { key: 'time', label: $t('admin.billing_collection.columns.time') },
               { key: 'invoice', label: $t('admin.billing_collection.columns.invoice') },

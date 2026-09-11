@@ -303,7 +303,7 @@
   let deleting = $state(false);
   let routerFilter = $state('');
   let page = $state(1);
-  const perPage = 25;
+  let perPage = $state(25);
 
   const canManage = $derived($can('manage', 'pppoe'));
 
@@ -617,6 +617,10 @@
       total={filtered.length}
       pageSize={perPage}
       onpage={(p) => (page = p)}
+      onpagesize={(n) => {
+        perPage = n;
+        page = 1;
+      }}
       emptyTitle={ $t('admin.customers.pppoe.v2.empty_match') }
       emptyHint={q ? $t('common.no_results_for', { values: { q } }) : $t('network.pppoe_v2.empty_hint')}
     >

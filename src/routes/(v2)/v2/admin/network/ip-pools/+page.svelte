@@ -296,7 +296,7 @@
       <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('network.ip_pools.v2.empty_no_pool') }</p></Card>
     {:else}
       <Card title={ $t('network.ip_pools.v2.card_pool', { values: { n: rows.length } }) }>
-        <DataTable
+        <DataTable pageSize={25}
           {columns}
           rows={rows.map((r, idx) => ({
             id: r.id || `${r.name}:${idx}`,

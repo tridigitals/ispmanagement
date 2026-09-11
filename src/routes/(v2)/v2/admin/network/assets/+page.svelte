@@ -338,7 +338,7 @@
   {/if}
 
   <Card title={`Daftar aset (${filteredRows.length}${assetsTruncated ? '+' : ''})`} padded={false}>
-    <DataTable
+    <DataTable pageSize={25}
       {columns}
       rows={filteredRows}
       {loading}

@@ -81,7 +81,8 @@
     "rows_per_page": "Baris per halaman:",
     "range": "{start}-{end} dari {count}",
     "previous_page": "Halaman sebelumnya",
-    "next_page": "Halaman berikutnya"
+    "next_page": "Halaman berikutnya",
+    "rows_per_page_aria": "Baris per halaman"
   },
   "mobile_fab": {
     "open_menu": "Buka menu"

@@ -65,7 +65,7 @@
   let rows = $state<DhcpStaticServicePublic[]>([]);
   let total = $state(0);
   let page = $state(1);
-  const perPage = 25;
+  let perPage = $state(25);
   let loading = $state(true);
   let loadError = $state<string | null>(null);
 
@@ -563,7 +563,7 @@
   {/if}
 
   <div class="mt-4">
-    <DataTable {columns} rows={visibleRows} {loading} pageSize={perPage} page={page} {total} onpage={(p) => { page = p; void load(); }} footNote={`${total} ${$t('admin.network.dhcp_static.v2.foot_prefix')}${search || filterRouterId ? $t('admin.network.dhcp_static.v2.foot_filtered') : ''}.`}>
+    <DataTable {columns} rows={visibleRows} {loading} pageSize={perPage} page={page} {total} onpage={(p) => { page = p; void load(); }} onpagesize={(n) => { perPage = n; page = 1; void load(); }} footNote={`${total} ${$t('admin.network.dhcp_static.v2.foot_prefix')}${search || filterRouterId ? $t('admin.network.dhcp_static.v2.foot_filtered') : ''}.`}>
       {#snippet cell(row: DhcpStaticServicePublic, col: Column)}
         {#if col.key === 'customer_id'}
           <span class="text-sm">{customerName.get(row.customer_id) || row.customer_id.slice(0, 8)}</span>

@@ -56,7 +56,7 @@
   let error = $state('');
   let total = $state(0);
   let pageNum = $state(1);
-  const perPage = 25;
+  let perPage = $state(25);
 
   let q = $state('');
   let actionQ = $state('');
@@ -261,6 +261,11 @@
     {total}
     onpage={(p) => {
       pageNum = p;
+      void load();
+    }}
+    onpagesize={(n) => {
+      perPage = n;
+      pageNum = 1;
       void load();
     }}
     emptyTitle={filtered ? $t('admin.audit_logs.v2_no_match') : $t('admin.audit_logs.v2_empty')}

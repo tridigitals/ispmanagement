@@ -212,7 +212,7 @@
   {/if}
 
   <Card title={`Daftar masalah (${report.total_issues})`} padded={false}>
-    <DataTable
+    <DataTable pageSize={25}
       {columns}
       rows={report.data}
       {loading}

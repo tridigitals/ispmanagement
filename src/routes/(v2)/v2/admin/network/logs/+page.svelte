@@ -316,7 +316,7 @@
         <p class="mt-1 text-sm text-ink-500">{ $t('admin.network.logs.v2.empty_hint') }</p>
       </div>
     {:else}
-      <DataTable
+      <DataTable pageSize={25}
         {columns}
         rows={rows}
         {loading}

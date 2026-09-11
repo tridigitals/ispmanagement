@@ -41,7 +41,7 @@
   let rows = $state<Invoice[]>([]);
   let total = $state(0);
   let page = $state(1);
-  const perPage = 25;
+  let perPage = $state(25);
   let statusFilter = $state<StatusKey>('all');
   let loading = $state(true);
   let err = $state('');
@@ -344,6 +344,11 @@
       {total}
       onpage={(p) => {
         page = p;
+        load();
+      }}
+      onpagesize={(n) => {
+        perPage = n;
+        page = 1;
         load();
       }}
       emptyTitle="Tidak ada tagihan"

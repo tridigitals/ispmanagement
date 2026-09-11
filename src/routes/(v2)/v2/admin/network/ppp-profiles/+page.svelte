@@ -290,7 +290,7 @@
       <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('network.ppp_profiles.v2.empty') }</p></Card>
     {:else}
     <Card title={ $t('network.ppp_profiles.v2.card_title', { values: { n: rows.length } }) }>
-      <DataTable
+      <DataTable pageSize={25}
         {columns}
         rows={rows.map((r, idx) => ({
           id: r.id || `${r.name}:${idx}`,

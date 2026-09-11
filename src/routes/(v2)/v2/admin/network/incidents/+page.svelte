@@ -92,7 +92,7 @@
   let statusFilter = $state<'all' | 'open' | 'ack' | 'in_progress' | 'resolved'>('all');
   // A-16: paginasi & agregat server-side.
   let incPage = $state(1);
-  const perPage = 25;
+  let perPage = $state(25);
   let total = $state(0);
   let stats = $state<{
     total: number; open: number; ack: number; in_progress: number; resolved: number;
@@ -553,6 +553,11 @@
       page={incPage}
       onpage={(p) => {
         incPage = p;
+        void loadData();
+      }}
+      onpagesize={(n) => {
+        perPage = n;
+        incPage = 1;
         void loadData();
       }}
       {loading}

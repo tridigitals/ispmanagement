@@ -79,7 +79,7 @@
 
   let total = $state(0);
   let pageNum = $state(1);
-  const perPage = 25;
+  let perPage = $state(25);
   const totalPages = $derived(Math.max(1, Math.ceil(total / perPage)));
 
   let detailOpen = $state(false);
@@ -471,13 +471,24 @@
         {columns}
         rows={items}
         {loading}
+        pageSize={perPage}
+        page={pageNum}
+        {total}
+        onpage={(p) => {
+          pageNum = p;
+          void load();
+        }}
+        onpagesize={(n) => {
+          perPage = n;
+          pageNum = 1;
+          void load();
+        }}
         emptyTitle="Tidak ada email"
         emptyHint={search
           ? $t('admin.email_outbox.v2.empty_hint2')
           : statusFilter === 'all'
             ? $t('admin.email_outbox.v2.empty1')
             : `Tidak ada email berstatus ${outboxStatusLabel(statusFilter).toLowerCase()}.`}
-        footNote={`${items.length} dari ${total} email · halaman ${pageNum}/${totalPages}`}
       >
         {#snippet cell(row, col)}
           {#if col.key === 'sel'}
@@ -525,32 +536,6 @@
           {/if}
         {/snippet}
       </DataTable>
-
-      {#if totalPages > 1}
-        <div class="mt-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            disabled={pageNum <= 1 || loading}
-            onclick={() => {
-              pageNum -= 1;
-              void load();
-            }}
-          >
-            Sebelumnya
-          </Button>
-          <span class="text-sm text-ink-500">Halaman {pageNum} dari {totalPages}</span>
-          <Button
-            variant="ghost"
-            disabled={pageNum >= totalPages || loading}
-            onclick={() => {
-              pageNum += 1;
-              void load();
-            }}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      {/if}
     </Card>
   </div>
 </AppShell>
