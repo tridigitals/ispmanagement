@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_admin/src/services/app_config.dart';
 import 'package:mobile_admin/src/services/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -42,7 +43,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   Icon(Icons.admin_panel_settings, size: 64, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(height: 16),
-                  Text('ISP Admin', style: Theme.of(context).textTheme.headlineLarge),
+                  Text(kAppName, style: Theme.of(context).textTheme.headlineLarge),
                   const SizedBox(height: 8),
                   Text('Masuk ke panel admin', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 40),

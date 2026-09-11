@@ -108,12 +108,19 @@ if [[ -z "$API_BASE_URL" ]]; then
 fi
 echo "   API_BASE_URL=$API_BASE_URL"
 
+# App name dinamis dari env (process env > .env > default) — sinkronkan
+# launcher label Android/iOS lalu bake nama yang sama ke Dart.
+node "$PROJECT_ROOT/scripts/sync-mobile-names.js" mobile-customer >/dev/null
+APP_NAME="$(node "$PROJECT_ROOT/scripts/sync-mobile-names.js" --get APP_NAME_CUSTOMER)"
+echo "   APP_NAME=$APP_NAME"
+
 flutter build apk --release --no-pub \
   --target-platform android-arm64 \
   --build-number="$BUILD_NUMBER" \
   --build-name="$BUILD_NAME" \
   --dart-define=API_BASE_URL="$API_BASE_URL" \
-  --dart-define=WS_BASE_URL="$WS_BASE_URL"
+  --dart-define=WS_BASE_URL="$WS_BASE_URL" \
+  --dart-define=APP_NAME="$APP_NAME"
 
 # arm64-only build produces a single APK at app-release.apk (smaller than universal)
 APK_SRC="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"

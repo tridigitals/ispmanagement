@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Configuration for the mobile app. Edit `.env` or pass `--dart-define`s.
+///
+/// Build-time name (launcher label disinkronkan scripts/sync-mobile-names.js).
+const String kAppName =
+    String.fromEnvironment('APP_NAME', defaultValue: 'ISP Teknisi');
+
 class AppConfig {
   const AppConfig({
     required this.apiBaseUrl,
@@ -22,7 +27,7 @@ class AppConfig {
         'WS_BASE_URL',
         defaultValue: '',
       ),
-      appName: 'ISP Teknisi',
+      appName: kAppName,
       appVersion: '0.1.0+1',
     );
   }

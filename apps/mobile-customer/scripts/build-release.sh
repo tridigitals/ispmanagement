@@ -69,6 +69,11 @@ if ! grep -q "mobile_scanner" .flutter-plugins; then
   echo "mobile_scanner=$HOME/.pub-cache/hosted/pub.dev/mobile_scanner-6.0.11/" >> .flutter-plugins
 fi
 
+node "$REPO_ROOT/scripts/sync-mobile-names.js" mobile-customer >/dev/null
+APP_NAME="$(node "$REPO_ROOT/scripts/sync-mobile-names.js" --get APP_NAME_CUSTOMER)"
+echo "   APP_NAME=$APP_NAME"
+DART_DEFINES+=("--dart-define=APP_NAME=$APP_NAME")
+
 flutter build apk --release \
   --target-platform android-arm64 \
   --no-pub \

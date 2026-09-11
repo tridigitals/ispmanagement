@@ -109,12 +109,17 @@ echo "   API_BASE_URL=${API_BASE_URL:-http://103.190.112.214:3000}"
 # `flutter pub get` to overwrite it from the app dir — in workspace mode that
 # re-emits the file with `../packages/api-client` relative URIs that resolve
 # outside the repo.
+node "$PROJECT_ROOT/scripts/sync-mobile-names.js" mobile-admin >/dev/null
+APP_NAME="$(node "$PROJECT_ROOT/scripts/sync-mobile-names.js" --get APP_NAME_ADMIN)"
+echo "   APP_NAME=$APP_NAME"
+
 flutter build apk --release --no-pub \
   --target-platform android-arm64 \
   --build-number="$BUILD_NUMBER" \
   --build-name="$BUILD_NAME" \
   --dart-define=API_BASE_URL="${API_BASE_URL:-http://103.190.112.214:3000}" \
-  --dart-define=WS_BASE_URL="${WS_BASE_URL:-ws://103.190.112.214:3000}"
+  --dart-define=WS_BASE_URL="${WS_BASE_URL:-ws://103.190.112.214:3000}" \
+  --dart-define=APP_NAME="$APP_NAME"
 
 APK_SRC="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
 APK_DST="/tmp/app-admin-release.apk"

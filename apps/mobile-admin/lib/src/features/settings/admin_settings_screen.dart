@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_admin/src/services/app_config.dart';
 import 'package:mobile_admin/src/services/auth_providers.dart';
 
 class AdminSettingsScreen extends ConsumerWidget {
@@ -48,7 +49,7 @@ class AdminSettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('Tentang'),
-            subtitle: const Text('ISP Admin v0.1.0'),
+            subtitle: Text('$kAppName v0.1.0'),
           ),
           const SizedBox(height: 24),
           Padding(

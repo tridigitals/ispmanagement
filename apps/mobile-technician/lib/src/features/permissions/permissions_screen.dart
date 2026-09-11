@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ui_kit/ui_kit.dart';
 
+import '../../services/app_config.dart';
 import '../../services/missing_providers.dart';
 import '../../services/fcm_service.dart';
 
@@ -198,7 +199,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Notifikasi ditolak permanen. Buka Settings → Apps → ISP Teknisi → Notifications untuk mengaktifkannya.',
+                                'Notifikasi ditolak permanen. Buka Settings → Apps → $kAppName → Notifications untuk mengaktifkannya.',
                                 style: TextStyle(
                                   color: isp.danger,
                                   fontSize: 12,

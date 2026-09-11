@@ -81,6 +81,11 @@ if [ -f "$REGISTRANT" ] && ! grep -q "mobile_scanner" "$REGISTRANT"; then
     }' "$REGISTRANT"
 fi
 
+node "$REPO_ROOT/scripts/sync-mobile-names.js" mobile-technician >/dev/null
+APP_NAME="$(node "$REPO_ROOT/scripts/sync-mobile-names.js" --get APP_NAME_TECHNICIAN)"
+echo "   APP_NAME=$APP_NAME"
+DART_DEFINES+=("--dart-define=APP_NAME=$APP_NAME")
+
 flutter build apk --release \
   --target-platform android-arm64 \
   --no-pub \

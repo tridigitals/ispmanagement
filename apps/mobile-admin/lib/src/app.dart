@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_admin/src/router/app_router.dart';
+import 'package:mobile_admin/src/services/app_config.dart';
 import 'package:mobile_admin/src/theme/app_theme.dart';
 
 class IspAdminApp extends ConsumerWidget {
@@ -11,7 +12,7 @@ class IspAdminApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
-      title: 'ISP Admin',
+      title: kAppName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

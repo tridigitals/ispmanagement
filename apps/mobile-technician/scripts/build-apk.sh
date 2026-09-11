@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build-apk.sh — build release APK for mobile-customer with proper monorepo path resolution.
+# build-apk.sh — build release APK for mobile-technician with proper monorepo path resolution.
 #
 # Required env (export before running):
 #   PATH must include $HOME/sdk/flutter/bin
@@ -19,7 +19,7 @@ set -euo pipefail
 # Resolve script dir + project root (apps/mobile-customer/scripts/build-apk.sh)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-APP_DIR="$PROJECT_ROOT/apps/mobile-customer"
+APP_DIR="$PROJECT_ROOT/apps/mobile-technician"
 MONOREPO_DART_TOOL="$PROJECT_ROOT/.dart_tool"
 APP_DART_TOOL="$APP_DIR/.dart_tool"
 
@@ -36,7 +36,7 @@ command -v flutter >/dev/null || { echo "❌ flutter not in PATH"; exit 1; }
 cd "$APP_DIR"
 
 # Step 1: Fix package_config.json — monorepo uses relative paths that break when
-# Flutter builds from apps/mobile-customer/. Copy + rewrite to absolute file:// URIs.
+# Flutter builds from apps/mobile-technician/. Copy + rewrite to absolute file:// URIs.
 if [[ "${SKIP_FIX:-0}" != "1" ]]; then
   echo "🔧 Patching package_config.json paths..."
   mkdir -p "$APP_DART_TOOL"
@@ -96,7 +96,7 @@ if [[ -z "${BUILD_NUMBER:-}" ]]; then
   BUILD_NUMBER="${BUILD_NUMBER:-$((CUR_CODE + 1))}"
 fi
 
-echo "📦 Building mobile-customer v${BUILD_NAME}+${BUILD_NUMBER}"
+echo "📦 Building mobile-technician v${BUILD_NAME}+${BUILD_NUMBER}"
 
 # Step 3: Build APK
 # API_BASE_URL is baked in at compile time so the app knows where to connect.
@@ -108,12 +108,17 @@ if [[ -z "$API_BASE_URL" ]]; then
 fi
 echo "   API_BASE_URL=$API_BASE_URL"
 
+node "$PROJECT_ROOT/scripts/sync-mobile-names.js" mobile-technician >/dev/null
+APP_NAME="$(node "$PROJECT_ROOT/scripts/sync-mobile-names.js" --get APP_NAME_TECHNICIAN)"
+echo "   APP_NAME=$APP_NAME"
+
 flutter build apk --release --no-pub \
   --target-platform android-arm64 \
   --build-number="$BUILD_NUMBER" \
   --build-name="$BUILD_NAME" \
   --dart-define=API_BASE_URL="$API_BASE_URL" \
-  --dart-define=WS_BASE_URL="$WS_BASE_URL"
+  --dart-define=WS_BASE_URL="$WS_BASE_URL" \
+  --dart-define=APP_NAME="$APP_NAME"
 
 # arm64-only build produces a single APK at app-release.apk (smaller than universal)
 APK_SRC="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
