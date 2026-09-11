@@ -1,11 +1,15 @@
 <!--
-  Ds/NavRail — sidebar ikon yang melebar saat hover; grup bisa dilipat.
+  Ds/NavRail — sidebar ikon yang melebar saat hover; grup accordion tertutup.
 
   Menggantikan Sidebar.svelte (1.139 baris) untuk shell v2. Perbedaan pokok:
   - Lebar 56px saat diam, 240px saat hover/fokus. Isi utama dapat ruang lebih.
   - Ikon sinkron (bukan dynamic import), jadi tidak ada pop-in.
-  - Judul grup = header accordion (klik untuk lipat/buka). Grup yang memuat
-    item aktif selalu terbuka; state lipatan dipersist ke sessionStorage.
+  - Default SEMUA seksi tertutup; klik judul untuk buka. Bersifat accordion
+    single-open: membuka satu seksi menutup seksi lain. Seksi yang memuat
+    menu aktif otomatis terbuka (termasuk saat pindah rute), dan hanya bisa
+    ditutup manual kalau menu aktif ikut pindah / user menutupnya sendiri.
+    Rail dengan satu grup (portal) selalu terbuka — tidak masuk akal folded.
+    State lipatan dipersist ke sessionStorage per tab.
   - Hanya SATU item yang boleh bertanda aktif: prefix terpanjang menang
     (activeRailHref) — dulu 'Beranda' (/v2/admin) ikut nyala di semua
     sub-route karena hanya '/admin' yang dikecualikan dari prefix-match.
@@ -27,53 +31,79 @@
 
   let expanded = $state(false);
 
-  const COLLAPSE_KEY = 'navra…psed';
+  const OPEN_KEY = 'navra…pens';
 
-  /** Grup yang sedang DILIPAT (default: semua terbuka). Record biasa,
-   *  bukan Set — mutasi Set in-place tidak memicu reaktivitas di Svelte 5.
-   *  Persist ke sessionStorage: pilihan lipatan user bertahan antar reload
-   *  dalam tab yang sama, tapi tidak basi lintas sesi / saat menu bertambah. */
-  let collapsedGroups = $state<Record<string, boolean>>({});
+  /** Seksi yang DIBUKA eksplisit oleh user. Absen dari map = ikut default
+   *  (tertutup, kecuali grup aktif / rail satu grup). Record biasa, bukan
+   *  Set — mutasi Set in-place tidak memicu reaktivitas di Svelte 5. */
+  let openGroups = $state<Record<string, boolean>>({});
 
-  function readCollapsed(): Record<string, boolean> {
+  function readOpen(): Record<string, boolean> {
     if (!browser) return {};
     try {
-      const raw = sessionStorage.getItem(COLLAPSE_KEY);
+      const raw = sessionStorage.getItem(OPEN_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   }
 
-  // Baca ulang saat mount (SSR-safe): nilai dari sessionStorage baru tersedia
-  // di klien, jadi jangan bergantung pada evaluasi initializer di module scope.
+  function writeOpen() {
+    if (!browser) return;
+    try {
+      sessionStorage.setItem(OPEN_KEY, JSON.stringify(openGroups));
+    } catch {
+      /* storage penuh/incognito: lipatan tetap hidup di memori sesi ini */
+    }
+  }
+
+  // Baca ulang saat mount (SSR-safe): nilai klien baru tersedia di browser.
   $effect(() => {
-    collapsedGroups = readCollapsed();
+    openGroups = readOpen();
   });
 
   const allHrefs = $derived(groups.flatMap((g) => g.items.map((i) => i.href)));
   const activeHref = $derived(activeRailHref(allHrefs, current));
+  const singleGroup = $derived(groups.length <= 1);
 
   function groupHasActive(g: RailGroup) {
     return g.items.some((i) => i.href === activeHref);
   }
 
-  function isOpen(g: RailGroup) {
-    // Grup aktif tidak pernah boleh terlipat supaya item terpilih terlihat.
-    return !collapsedGroups[g.title] || groupHasActive(g);
+  const activeGroupTitle = $derived(groups.find((g) => groupHasActive(g))?.title);
+
+  function isOpen(g: RailGroup): boolean {
+    if (singleGroup) return true;
+    if (g.title in openGroups) return openGroups[g.title];
+    // Default: tertutup, kecuali grup yang memuat menu aktif.
+    return groupHasActive(g);
   }
 
   function toggleGroup(g: RailGroup) {
-    if (groupHasActive(g)) return;
-    collapsedGroups[g.title] = !collapsedGroups[g.title];
-    if (browser) {
-      try {
-        sessionStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsedGroups));
-      } catch {
-        /* storage penuh/incognito: lipatan tetap hidup di memori sesi ini */
-      }
-    }
+    const opening = !isOpen(g);
+    // Accordion: menutup semua seksi lain saat satu dibuka.
+    for (const other of groups) openGroups[other.title] = other.title === g.title ? opening : false;
+    writeOpen();
   }
+
+  // Pindah rute: seksi milik menu aktif ikut terbuka (accordion menutup yang
+  // lain). Saat MOUNT tidak dipaksa — kalau tidak, menutup seksi aktif lalu
+  // reload akan langsung 'melawan' pilihan user. lastActive===null = belum
+  // terisi (mount pertama).
+  let lastActive: string | null = null;
+  $effect(() => {
+    const href = activeHref;
+    if (lastActive === null) {
+      lastActive = href;
+      return;
+    }
+    if (href === lastActive) return;
+    lastActive = href;
+    const t = activeGroupTitle;
+    if (t === undefined || singleGroup) return;
+    for (const other of groups) openGroups[other.title] = other.title === t;
+    writeOpen();
+  });
 </script>
 
 <nav
