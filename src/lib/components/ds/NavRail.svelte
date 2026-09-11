@@ -5,12 +5,13 @@
   - Lebar 56px saat diam, 240px saat hover/fokus. Isi utama dapat ruang lebih.
   - Ikon sinkron (bukan dynamic import), jadi tidak ada pop-in.
   - Judul grup = header accordion (klik untuk lipat/buka). Grup yang memuat
-    item aktif selalu terbuka; state lipatan lain hanya di memori sesi.
+    item aktif selalu terbuka; state lipatan dipersist ke sessionStorage.
   - Hanya SATU item yang boleh bertanda aktif: prefix terpanjang menang
     (activeRailHref) — dulu 'Beranda' (/v2/admin) ikut nyala di semua
     sub-route karena hanya '/admin' yang dikecualikan dari prefix-match.
 -->
 <script lang="ts">
+  import { browser } from '$app/environment';
   import Icon from './Icon.svelte';
   import { activeRailHref, type RailGroup } from './nav-types';
 
@@ -26,9 +27,29 @@
 
   let expanded = $state(false);
 
+  const COLLAPSE_KEY = 'navra…psed';
+
   /** Grup yang sedang DILIPAT (default: semua terbuka). Record biasa,
-   *  bukan Set — mutasi Set in-place tidak memicu reaktivitas di Svelte 5. */
+   *  bukan Set — mutasi Set in-place tidak memicu reaktivitas di Svelte 5.
+   *  Persist ke sessionStorage: pilihan lipatan user bertahan antar reload
+   *  dalam tab yang sama, tapi tidak basi lintas sesi / saat menu bertambah. */
   let collapsedGroups = $state<Record<string, boolean>>({});
+
+  function readCollapsed(): Record<string, boolean> {
+    if (!browser) return {};
+    try {
+      const raw = sessionStorage.getItem(COLLAPSE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  // Baca ulang saat mount (SSR-safe): nilai dari sessionStorage baru tersedia
+  // di klien, jadi jangan bergantung pada evaluasi initializer di module scope.
+  $effect(() => {
+    collapsedGroups = readCollapsed();
+  });
 
   const allHrefs = $derived(groups.flatMap((g) => g.items.map((i) => i.href)));
   const activeHref = $derived(activeRailHref(allHrefs, current));
@@ -45,6 +66,13 @@
   function toggleGroup(g: RailGroup) {
     if (groupHasActive(g)) return;
     collapsedGroups[g.title] = !collapsedGroups[g.title];
+    if (browser) {
+      try {
+        sessionStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapsedGroups));
+      } catch {
+        /* storage penuh/incognito: lipatan tetap hidup di memori sesi ini */
+      }
+    }
   }
 </script>
 
