@@ -15,6 +15,7 @@
   import { publicApi } from '$lib/api/public';
   import { getDefaultTenantLandingPath } from '$lib/utils/appLanding';
   import { toast } from '$lib/stores/toast';
+  import AuthLayout from '$lib/components/auth/AuthLayout.svelte';
 
   let identifier = '';
   let password = '';
@@ -389,9 +390,8 @@
   }
 </script>
 
-<div class="login-container">
-  <div class="form-section">
-    <div class="form-wrapper">
+<AuthLayout>
+  <div class="form-wrapper">
       <div class="form-header">
         <h2>
           {#if step === 'login'}
@@ -783,35 +783,13 @@
           <a href="/register">{$t('auth.login.register_link')}</a>
         </p>
       {/if}
-    </div>
   </div>
-</div>
+</AuthLayout>
 
 <style>
-  .login-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background: var(--bg-primary);
-  }
-
-  .form-section {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: clamp(1.25rem, 4vw, 2rem);
-    width: 100%;
-  }
-
   .form-wrapper {
     width: 100%;
-    max-width: 480px;
-    background: var(--bg-surface);
-    padding: clamp(1.5rem, 4vw, 2.5rem);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-md);
+    padding: clamp(1.5rem, 4vw, 2.25rem);
   }
 
   .form-header {
@@ -943,7 +921,7 @@
   }
 
   .form-utils a {
-    color: var(--color-primary-light);
+    color: var(--color-primary);
     text-decoration: none;
     font-weight: 600;
   }
@@ -951,8 +929,8 @@
   .btn-primary {
     width: 100%;
     padding: 0.75rem;
-    background: var(--color-primary);
-    color: #08090d;
+    background: var(--color-brand-600);
+    color: #fff;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -993,9 +971,9 @@
   }
 
   .alert.error {
-    background: rgba(239, 68, 68, 0.1);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: var(--color-red-50, #fef2f2);
+    color: var(--color-red-700, #b91c1c);
+    border: 1px solid var(--color-red-200, #fecaca);
   }
 
   .spinner {

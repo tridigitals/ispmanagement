@@ -3,10 +3,11 @@
   import { user } from '$lib/stores/auth';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
+  import AuthLayout from '$lib/components/auth/AuthLayout.svelte';
 </script>
 
-<div class="unauthorized-page fade-in">
-  <div class="content">
+<AuthLayout>
+
     <div class="lock-icon">
       <Icon name="shield-alert" size={32} />
     </div>
@@ -24,28 +25,9 @@
         {$t('pages.unauthorized.back')}
       </button>
     </div>
-  </div>
-</div>
+</AuthLayout>
 
 <style>
-  .unauthorized-page {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: clamp(1rem, 4vw, 2rem);
-    text-align: center;
-    background: var(--bg-primary);
-  }
-
-  .content {
-    max-width: 500px;
-    padding: clamp(1.5rem, 5vw, 2.5rem);
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-  }
 
   .lock-icon {
     width: 64px;
@@ -106,7 +88,4 @@
     }
   }
 
-  .fade-in {
-    animation: fadeIn 0.4s ease-out;
-  }
 </style>

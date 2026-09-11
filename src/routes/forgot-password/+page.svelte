@@ -4,6 +4,7 @@
   import Icon from '$lib/components/ui/Icon.svelte';
   import { t } from 'svelte-i18n';
 
+  import AuthLayout from '$lib/components/auth/AuthLayout.svelte';
   let email = '';
   let submitted = false;
   let loading = false;
@@ -25,8 +26,8 @@
   }
 </script>
 
-<div class="auth-page">
-  <div class="auth-card fade-in">
+<AuthLayout>
+
     {#if !submitted}
       <div class="auth-header">
         <div class="status-mark">
@@ -92,28 +93,9 @@
         >← {$t('auth.forgot_password.back_to_login')}</a
       >
     </div>
-  </div>
-</div>
+</AuthLayout>
 
 <style>
-  .auth-page {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: clamp(1rem, 4vw, 2rem);
-    background: var(--bg-primary);
-  }
-
-  .auth-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: clamp(1.5rem, 5vw, 2.5rem);
-    width: 100%;
-    max-width: 420px;
-    box-shadow: var(--shadow-sm);
-  }
 
   .status-mark {
     width: 56px;

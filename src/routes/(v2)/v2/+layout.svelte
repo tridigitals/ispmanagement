@@ -12,10 +12,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { navigating, page } from '$app/stores';
   import { isAuthenticated, checkAuth, user } from '$lib/stores/auth';
   import { hasInternalAppAccess } from '$lib/utils/appLanding';
   import { secureGetItem } from '$lib/utils/tauri-store';
+  import PageSkeleton from '$lib/components/ds/PageSkeleton.svelte';
   import ProfileModal from '$lib/components/profile/ProfileModal.svelte';
   import NotificationModal from '$lib/components/notifications/NotificationModal.svelte';
   import { refreshUnreadCount } from '$lib/stores/notifications';
@@ -69,9 +70,38 @@
       goto('/v2/admin');
     }
   });
+
+  // Selama layout v2 terpasang, kanvas html/body ikut terang. Tanpa ini,
+  // jeda unmount→mount antar halaman (AppShell dirender per-halaman)
+  // menampilkan --bg-app gelap legacy di bawahnya = kedip hitam.
+  // Wallboard NOC = rute v2 berkanvas gelap: jangan pasang kanvas terang.
+  $effect(() => {
+    const dark = $page.url.pathname === '/v2/admin/network/noc/wallboard';
+    document.documentElement.classList.toggle('v2-route', !dark);
+  });
+
+  // Overlay skeleton saat pindah halaman. Delay 250ms supaya navigasi instan
+  // (halaman yang datanya sudah di-cache) tidak berkedip skeleton; hanya
+  // navigasi lambat (fetch server) yang menampilkannya.
+  let showNavSkeleton = $state(false);
+  $effect(() => {
+    const nav = $navigating;
+    if (!nav || !ready) {
+      showNavSkeleton = false;
+      return;
+    }
+    const id = setTimeout(() => (showNavSkeleton = true), 250);
+    return () => {
+      clearTimeout(id);
+      showNavSkeleton = false;
+    };
+  });
 </script>
 
 {#if ready}
+  {#if showNavSkeleton}
+    <PageSkeleton />
+  {/if}
   <!--
     `v2-light` meng-override token warna gelap legacy supaya komponen warisan
     (ui/Modal, RichTextEditor, Select, modal profil/notifikasi) yang dirender
@@ -87,7 +117,5 @@
     <NotificationModal />
   </div>
 {:else}
-  <div class="grid h-dvh place-items-center bg-ink-50">
-    <div class="text-base text-ink-500">Memuat…</div>
-  </div>
+  <PageSkeleton />
 {/if}

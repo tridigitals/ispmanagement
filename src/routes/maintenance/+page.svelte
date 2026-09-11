@@ -7,6 +7,7 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
 
+  import AuthLayout from '$lib/components/auth/AuthLayout.svelte';
   let message =
     get(t)('pages.maintenance.default_message') ||
     "We're updating our systems to serve you better. Please check back soon!";
@@ -47,8 +48,8 @@
   });
 </script>
 
-<div class="maintenance-container">
-  <div class="maintenance-card">
+<AuthLayout>
+
     <div class="maintenance-icon">
       <Icon name="settings" size={34} />
     </div>
@@ -66,33 +67,9 @@
     <p class="footer-text">
       {$t('pages.maintenance.thanks') || "Thank you for your patience. We'll be back shortly!"}
     </p>
-  </div>
-</div>
+</AuthLayout>
 
 <style>
-  .maintenance-container {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-primary);
-    padding: 1rem;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .maintenance-card {
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: clamp(1.5rem, 5vw, 2.5rem);
-    text-align: center;
-    max-width: 520px;
-    width: 100%;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    z-index: 1;
-  }
 
   .maintenance-icon {
     width: 68px;
@@ -170,10 +147,6 @@
   }
 
   @media (max-width: 480px) {
-    .maintenance-card {
-      padding: 2rem 1.5rem;
-    }
-
     h1 {
       font-size: 1.5rem;
     }

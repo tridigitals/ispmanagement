@@ -6,9 +6,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ISP Management</title>
     %sveltekit.head%
+    <style>
+      /* Boot-level paint: cegah kedip hitam sebelum CSS Svelte terpasang.
+         Default = terang (tema v2/cutover). Halaman gelap eksplisit
+         (wallboard NOC) menandai diri via data-boot-theme. */
+      html.boot-light,
+      html.boot-light body {
+        background: #fafafa;
+        color-scheme: light;
+      }
+      /* Progress bar navigasi client-side (lihat script di bawah). */
+      #nav-progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        width: 0;
+        z-index: 2147483647;
+        background: linear-gradient(90deg, #4f6bed, #3a53d4);
+        box-shadow: 0 0 8px rgba(58, 83, 212, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: width 220ms ease, opacity 150ms ease;
+      }
+    </style>
+    <script>
+      // Jalankan SESBELUM render pertama: warna dasar mengikuti rute,
+      // bukan tema global. Auth publik + v2 = terang; wallboard NOC,
+      // superadmin, install, pay, legacy = tetap gelap.
+      (function () {
+        var p = location.pathname;
+        var bright =
+          /^\/v2(?!\/admin\/network\/noc\/wallboard)/.test(p) ||
+          /^\/(login|register|forgot-password|verify-email|unauthorized|maintenance)(\/|$)/.test(p);
+        if (bright) {
+          document.documentElement.classList.add('boot-light');
+          if (/^\/v2/.test(p)) document.documentElement.classList.add('v2-route');
+        }
+        var bar;
+        function ensureBar() {
+          if (bar) return bar;
+          bar = document.getElementById('nav-progress');
+          if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'nav-progress';
+            document.addEventListener('DOMContentLoaded', function () {
+              document.body.appendChild(bar);
+            });
+          }
+          return bar;
+        }
+        window.__navProgress = function (state) {
+          var b = ensureBar();
+          if (!b || !b.isConnected) return;
+          if (state === 'start') {
+            b.style.transition = 'none';
+            b.style.width = '0';
+            b.style.opacity = '1';
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () {
+                b.style.transition = 'width 6s cubic-bezier(0.1,0.6,0.2,1)';
+                b.style.width = '72%';
+              });
+            });
+          } else {
+            b.style.transition = 'width 160ms ease, opacity 320ms ease 120ms';
+            b.style.width = '100%';
+            b.style.opacity = '0';
+            setTimeout(function () {
+              b.style.width = '0';
+            }, 500);
+          }
+        };
+        // Fallback: kalau router mati/redirect penuh, jangan tinggalkan bar nyangkut.
+        window.addEventListener('beforeunload', function () {
+          if (window.__navProgress) window.__navProgress('done');
+        });
+      })();
+    </script>
   </head>
 
   <body data-sveltekit-preload-data="hover">
+    <div id="nav-progress"></div>
     <div style="display: contents">%sveltekit.body%</div>
+    <script>
+      // Jembatan store `navigating` SvelteKit -> progress bar. Di-inline di sini
+      // supaya bekerja untuk SEMUA rute tanpa menyentuh tiap layout.
+      (function () {
+        var token = 0;
+        window.__navHook = function (isNav) {
+          if (!window.__navProgress) return;
+          if (isNav) {
+            token++;
+            window.__navProgress('start');
+            var mine = token;
+            // safety: maksimal 4s walaupun event done hilang
+            setTimeout(function () {
+              if (token === mine) window.__navProgress('done');
+            }, 4000);
+          } else {
+            token++;
+            window.__navProgress('done');
+          }
+        };
+      })();
+    </script>
   </body>
 </html>

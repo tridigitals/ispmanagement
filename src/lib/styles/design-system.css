@@ -168,6 +168,8 @@
   .v2-light {
     --bg-surface: var(--color-ink-0);
     --bg-primary: var(--color-ink-0);
+    --bg-secondary: var(--color-ink-100);
+    --bg-card: var(--color-ink-0);
     --bg-app: var(--color-ink-50);
     --bg-tertiary: var(--color-ink-50);
     --bg-hover: var(--color-ink-100);
@@ -204,6 +206,18 @@
   }
 
   .ds-scope :is(button, input, select, textarea):disabled,
+  /* Kanvas dokumen selama rute v2 terpasang (lihat $effect di (v2)/+layout).
+     AppShell dirender PER-HALAMAN, jadi di celah unmount→mount antar rute
+     body sempat terlihat; tanpa override ini warnanya = --bg-app gelap
+     legacy (#08090d) -> kedip hitam yang dilaporkan Tri 2026-09-11.
+     Dipasang di element(html) supaya menangkan spesifikksitas dari
+     `html, body { background: var(--bg-app) }` global. */
+  html.v2-route,
+  html.v2-route body {
+    background: var(--color-ink-50);
+    color-scheme: light;
+  }
+
   .v2-light :is(button, input, select, textarea):disabled {
     cursor: not-allowed;
   }

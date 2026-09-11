@@ -16,7 +16,7 @@
   import { appLogo } from '$lib/stores/logo';
   import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { navigating, page } from '$app/stores';
   import { getSlugFromDomain, isPlatformDomain } from '$lib/utils/domain';
   import { browser } from '$app/environment';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
@@ -24,6 +24,8 @@
   import { formatDocumentTitle, isTenantScopedPath, resolvePageTitle } from '$lib/utils/pageTitle';
   import { initTauriStore } from '$lib/utils/tauri-store';
   import { extractApiErrorMessage } from '$lib/api/core';
+  import { isBrightCanvasPath } from '$lib/utils/bootTheme';
+  import PageSkeleton from '$lib/components/ds/PageSkeleton.svelte';
   import type { Component } from 'svelte';
 
   let loading = $state(true);
@@ -35,6 +37,22 @@
   let GlobalUploadsComponent: Component | null = null;
   let documentTitle = $state('ISP Management');
   let initError = $state<string | null>(null);
+
+  // Progress bar navigasi client-side -> jembatan ke window.__navHook (app.html).
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const hook = (window as unknown as { __navHook?: (isNav: boolean) => void }).__navHook;
+    if (!hook) return;
+    const unsub = navigating.subscribe((n) => hook(!!n));
+    return unsub;
+  });
+
+  // Sinkronkan kelas kanvas boot (app.html) dengan rute aktif, supaya loader
+  // root (PageSkeleton) ikut tone rute saat SPA-nav & saat page real-nya gelap.
+  $effect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('boot-light', isBrightCanvasPath($page.url.pathname));
+  });
   const realtimeController = createRootRealtimeController(loadRealtimeRuntime);
 
   // Global safety net: if app fails to boot, clear auth and redirect to login
@@ -381,10 +399,7 @@
 </svelte:head>
 
 {#if loading}
-  <div class="loading-container">
-    <div class="spinner"></div>
-    <p>{i18nReady ? $t('common.loading') || 'Loading...' : 'Loading...'}</p>
-  </div>
+  <PageSkeleton dark={!isBrightCanvasPath($page.url.pathname)} />
 {:else}
   {#if ToasterComponent}
     <svelte:component this={ToasterComponent} />
@@ -396,27 +411,6 @@
 {/if}
 
 <style>
-  .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    gap: 1rem;
-  }
 
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--bg-tertiary);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
 </style>

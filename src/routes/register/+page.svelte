@@ -220,6 +220,7 @@
   }
 </script>
 
+<div class="contents v2-light">
 {#if pendingApproval}
   <div class="auth-container">
     <div class="brand-section">
@@ -417,6 +418,7 @@
     <div class="spinner"></div>
   </div>
 {/if}
+</div>
 
 <style>
   .auth-container {
@@ -577,8 +579,8 @@
   .btn-primary {
     width: 100%;
     padding: 0.75rem;
-    background: var(--color-primary);
-    color: #08090d;
+    background: var(--color-brand-600);
+    color: #fff;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -620,9 +622,9 @@
   }
 
   .alert.error {
-    background: rgba(239, 68, 68, 0.1);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: var(--color-red-50, #fef2f2);
+    color: var(--color-red-700, #b91c1c);
+    border: 1px solid var(--color-red-200, #fecaca);
   }
 
   .spinner {

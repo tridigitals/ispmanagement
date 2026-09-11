@@ -8,6 +8,7 @@
   import { t } from 'svelte-i18n';
   import { get } from 'svelte/store';
 
+  import AuthLayout from '$lib/components/auth/AuthLayout.svelte';
   let status: 'verifying' | 'success' | 'error' = 'verifying';
   let message = get(t)('auth.verify_email.verifying') || 'Verifying your email...';
 
@@ -42,8 +43,8 @@
   });
 </script>
 
-<div class="page-container">
-  <div class="card">
+<AuthLayout>
+
     <div class="status-icon {status}">
       {#if status === 'verifying'}
         <div class="spinner"></div>
@@ -67,29 +68,9 @@
         {$t('auth.verify_email.go_to_login')}
       </button>
     {/if}
-  </div>
-</div>
+</AuthLayout>
 
 <style>
-  .page-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 2rem;
-    background: var(--bg-primary);
-  }
-
-  .card {
-    background: var(--bg-surface);
-    padding: clamp(1.5rem, 5vw, 2.5rem);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    text-align: center;
-    max-width: 400px;
-    width: 100%;
-    box-shadow: var(--shadow-sm);
-  }
 
   .status-icon {
     width: 64px;
