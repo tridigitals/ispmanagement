@@ -1,14 +1,18 @@
 <!--
-  Ds/NavRail — sidebar ikon yang melebar saat hover.
+  Ds/NavRail — sidebar ikon yang melebar saat hover; grup bisa dilipat.
 
   Menggantikan Sidebar.svelte (1.139 baris) untuk shell v2. Perbedaan pokok:
   - Lebar 56px saat diam, 240px saat hover/fokus. Isi utama dapat ruang lebih.
   - Ikon sinkron (bukan dynamic import), jadi tidak ada pop-in.
-  - Label section tidak pakai accordion state yang perlu disimpan ke storage.
+  - Judul grup = header accordion (klik untuk lipat/buka). Grup yang memuat
+    item aktif selalu terbuka; state lipatan lain hanya di memori sesi.
+  - Hanya SATU item yang boleh bertanda aktif: prefix terpanjang menang
+    (activeRailHref) — dulu 'Beranda' (/v2/admin) ikut nyala di semua
+    sub-route karena hanya '/admin' yang dikecualikan dari prefix-match.
 -->
 <script lang="ts">
   import Icon from './Icon.svelte';
-  import type { RailGroup } from './nav-types';
+  import { activeRailHref, type RailGroup } from './nav-types';
 
   interface Props {
     groups: RailGroup[];
@@ -22,10 +26,25 @@
 
   let expanded = $state(false);
 
-  function isActive(href: string) {
-    if (href === current) return true;
-    // Cocokkan prefix, tapi jangan sampai '/admin' menyorot semua submenu.
-    return href !== '/admin' && current.startsWith(href + '/');
+  /** Grup yang sedang DILIPAT (default: semua terbuka). Record biasa,
+   *  bukan Set — mutasi Set in-place tidak memicu reaktivitas di Svelte 5. */
+  let collapsedGroups = $state<Record<string, boolean>>({});
+
+  const allHrefs = $derived(groups.flatMap((g) => g.items.map((i) => i.href)));
+  const activeHref = $derived(activeRailHref(allHrefs, current));
+
+  function groupHasActive(g: RailGroup) {
+    return g.items.some((i) => i.href === activeHref);
+  }
+
+  function isOpen(g: RailGroup) {
+    // Grup aktif tidak pernah boleh terlipat supaya item terpilih terlihat.
+    return !collapsedGroups[g.title] || groupHasActive(g);
+  }
+
+  function toggleGroup(g: RailGroup) {
+    if (groupHasActive(g)) return;
+    collapsedGroups[g.title] = !collapsedGroups[g.title];
   }
 </script>
 
@@ -59,41 +78,57 @@
     {#each groups as g}
       <div class="mb-1">
         {#if expanded}
-          <div class="px-3.5 pt-2 pb-1 text-2xs font-semibold tracking-[0.12em] text-ink-400 uppercase">
-            {g.title}
-          </div>
+          <button
+            type="button"
+            class="focus-ring group/sect flex h-7 w-full items-center gap-1 px-3.5 text-2xs font-semibold tracking-[0.12em] text-ink-400 uppercase transition-colors hover:text-ink-600"
+            aria-expanded={isOpen(g)}
+            title={isOpen(g) ? 'Lipat bagian ini' : 'Buka bagian ini'}
+            onclick={() => toggleGroup(g)}
+          >
+            <span class="truncate">{g.title}</span>
+            <span
+              class="ml-auto grid size-4 place-items-center transition-[transform,opacity] duration-150 {isOpen(g)
+                ? 'opacity-70'
+                : '-rotate-90 opacity-0 group-hover/sect:opacity-70'}"
+            >
+              <Icon name="chevronDown" size={12} />
+            </span>
+          </button>
         {:else}
           <div class="mx-3.5 my-2 border-t border-ink-100"></div>
         {/if}
 
-        {#each g.items as it}
-          <a
-            href={it.href}
-            aria-current={isActive(it.href) ? 'page' : undefined}
-            title={expanded ? undefined : it.label}
-            class="focus-ring relative mx-1.5 flex h-9 items-center gap-3 rounded-lg px-2 text-base
-              {isActive(it.href)
-              ? 'bg-ink-100 font-medium text-ink-900'
-              : 'text-ink-500 hover:bg-ink-50 hover:text-ink-900'}"
-          >
-            {#if isActive(it.href)}
-              <span class="absolute top-1.5 -left-1.5 h-6 w-[3px] rounded-r bg-ink-900"></span>
-            {/if}
-            <span class="grid size-5 shrink-0 place-items-center">
-              <Icon name={it.icon} size={16} />
-            </span>
-            {#if expanded}
-              <span class="truncate">{it.label}</span>
-              {#if it.badge}
-                <span class="num ml-auto rounded bg-red-100 px-1.5 py-px text-2xs font-semibold text-red-700">
-                  {it.badge}
-                </span>
+        {#if !expanded || isOpen(g)}
+          {#each g.items as it}
+            {@const active = it.href === activeHref}
+            <a
+              href={it.href}
+              aria-current={active ? 'page' : undefined}
+              title={expanded ? undefined : it.label}
+              class="focus-ring relative mx-1.5 flex h-9 items-center gap-3 rounded-lg px-2 text-base
+                {active
+                ? 'bg-ink-100 font-medium text-ink-900'
+                : 'text-ink-500 hover:bg-ink-50 hover:text-ink-900'}"
+            >
+              {#if active}
+                <span class="absolute top-1.5 -left-1.5 h-6 w-[3px] rounded-r bg-ink-900"></span>
               {/if}
-            {:else if it.badge}
-              <span class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-red-500"></span>
-            {/if}
-          </a>
-        {/each}
+              <span class="grid size-5 shrink-0 place-items-center">
+                <Icon name={it.icon} size={16} />
+              </span>
+              {#if expanded}
+                <span class="truncate">{it.label}</span>
+                {#if it.badge}
+                  <span class="num ml-auto rounded bg-red-100 px-1.5 py-px text-2xs font-semibold text-red-700">
+                    {it.badge}
+                  </span>
+                {/if}
+              {:else if it.badge}
+                <span class="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-red-500"></span>
+              {/if}
+            </a>
+          {/each}
+        {/if}
       </div>
     {/each}
   </div>

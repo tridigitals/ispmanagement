@@ -20,3 +20,25 @@ export interface RailGroup {
   title: string;
   items: RailItem[];
 }
+
+/**
+ * Satu-satunya item nav yang boleh dianggap aktif untuk `current`.
+ *
+ * Aturan: cocokkan persis, ATAU cocokkan prefix terpanjang. Dulu NavRail
+ * menandai semua item yang jadi prefix path, sehingga 'Beranda' (/v2/admin)
+ * ikut nyala di seluruh sub-route, dan 'Tagihan' nyala berbarengan dengan
+ * 'Penagihan' di /v2/admin/invoices/collection.
+ */
+export function activeRailHref(
+  hrefs: readonly string[],
+  current: string,
+): string | null {
+  let best: string | null = null;
+  for (const href of hrefs) {
+    const exact = href === current;
+    const prefix = current.startsWith(href + '/');
+    if (!exact && !prefix) continue;
+    if (best === null || href.length > best.length) best = href;
+  }
+  return best;
+}
