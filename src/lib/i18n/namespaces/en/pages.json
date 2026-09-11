@@ -12,6 +12,9 @@
     "title": "Access Denied",
     "sorry": "Sorry,",
     "message": "You don't have the required permissions to view this page. This area is restricted to system administrators.",
-    "back": "Return to Safety"
+    "back": "Return to Safety",
+    "subtitle": "This page is restricted to administrators.",
+    "go_home": "Go to dashboard",
+    "sign_out": "Sign out"
   }
 }

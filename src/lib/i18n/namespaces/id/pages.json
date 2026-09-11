@@ -12,6 +12,9 @@
     "title": "Akses Ditolak",
     "sorry": "Maaf,",
     "message": "Anda tidak memiliki izin yang diperlukan untuk membuka halaman ini. Area ini khusus untuk administrator sistem.",
-    "back": "Kembali"
+    "back": "Kembali",
+    "subtitle": "Halaman ini terbatas untuk administrator.",
+    "go_home": "Ke beranda",
+    "sign_out": "Keluar"
   }
 }
