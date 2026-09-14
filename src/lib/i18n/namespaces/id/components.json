@@ -138,5 +138,16 @@
   },
   "attention": {
     "default_title": "Perlu tindakan"
+  },
+  "save_bar": {
+    "unsaved_title": "{n} perubahan belum disimpan",
+    "unsaved_aria": "Perubahan belum disimpan",
+    "elsewhere": "Termasuk perubahan di bagian {parts}. Semuanya ikut tersimpan.",
+    "others_suffix": " +{n} lainnya",
+    "cancel": "Batalkan",
+    "save": "Simpan"
+  },
+  "topbar": {
+    "search_placeholder": "Cari pelanggan, invoice, PPPoE…"
   }
 }

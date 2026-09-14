@@ -138,5 +138,16 @@
   },
   "attention": {
     "default_title": "Needs action"
+  },
+  "save_bar": {
+    "unsaved_title": "{n} unsaved changes",
+    "unsaved_aria": "Unsaved changes",
+    "elsewhere": "Includes changes in {parts}. All of them will be saved.",
+    "others_suffix": " +{n} more",
+    "cancel": "Discard",
+    "save": "Save"
+  },
+  "topbar": {
+    "search_placeholder": "Search customers, invoices, PPPoE…"
   }
 }

@@ -5,6 +5,7 @@
   tinggi dikunci 56px supaya sejajar dengan header NavRail.
 -->
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
 
@@ -25,11 +26,14 @@
     right,
     onMenuClick,
     search = true,
-    searchPlaceholder = 'Cari pelanggan, invoice, PPPoE…',
+    searchPlaceholder,
     onSearch,
   }: Props = $props();
 
   let q = $state('');
+  const ph = $derived(
+    searchPlaceholder ?? $t('components.topbar.search_placeholder'),
+  );
 </script>
 
 <header
@@ -58,8 +62,8 @@
         bind:value={q}
         oninput={() => onSearch?.(q)}
         type="search"
-        placeholder={searchPlaceholder}
-        aria-label={searchPlaceholder}
+        placeholder={ph}
+        aria-label={ph}
         class="h-8 w-full rounded-lg bg-ink-50 pr-14 pl-8 text-base text-ink-900 ring-1 ring-inset ring-ink-200 placeholder:text-ink-400 focus:bg-white focus:ring-brand-600 focus:outline-none"
       />
       <kbd

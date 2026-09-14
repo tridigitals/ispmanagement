@@ -16,6 +16,7 @@
   perubahan ada di bagian lain, pengguna melihatnya sebelum menekan Simpan.
 -->
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
 
@@ -35,7 +36,8 @@
   /* Tiga nama pertama saja; sisanya diringkas. Menyebut semua nama di bilah
      sempit membuatnya tidak terbaca. */
   const preview = $derived(
-    changes.slice(0, 3).join(', ') + (count > 3 ? ` +${count - 3} lainnya` : ''),
+    changes.slice(0, 3).join(', ') +
+      (count > 3 ? $t('components.save_bar.others_suffix', { values: { n: count - 3 } }) : ''),
   );
 </script>
 
@@ -43,22 +45,22 @@
   <div
     class="sticky bottom-0 z-20 -mx-5 mt-6 border-t border-ink-200 bg-white/95 px-5 py-3 backdrop-blur lg:-mx-7 lg:px-7"
     role="region"
-    aria-label="Perubahan belum disimpan"
+    aria-label={ $t('components.save_bar.unsaved_aria') }
   >
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div class="flex min-w-0 flex-1 items-center gap-2.5">
         <span class="size-2 shrink-0 rounded-full bg-amber-500"></span>
         <div class="min-w-0">
           <div class="text-base font-medium text-ink-900">
-            {count} perubahan belum disimpan
+            { $t('components.save_bar.unsaved_title', { values: { n: count } }) }
           </div>
           <div class="truncate text-sm text-ink-500">{preview}</div>
         </div>
       </div>
 
       <div class="flex shrink-0 items-center gap-2">
-        <Button variant="ghost" onclick={onreset} disabled={saving}>Batalkan</Button>
-        <Button variant="primary" icon="check" onclick={onsave} loading={saving}>Simpan</Button>
+        <Button variant="ghost" onclick={onreset} disabled={saving}>{ $t('components.save_bar.cancel') }</Button>
+        <Button variant="primary" icon="check" onclick={onsave} loading={saving}>{ $t('components.save_bar.save') }</Button>
       </div>
     </div>
 
@@ -70,7 +72,7 @@
       >
         <Icon name="alert" size={14} class="mt-0.5 shrink-0 text-amber-700" />
         <p class="text-sm text-amber-900">
-          Termasuk perubahan di bagian {elsewhere.join(', ')}. Semuanya ikut tersimpan.
+          { $t('components.save_bar.elsewhere', { values: { parts: elsewhere.join(', ') } }) }
         </p>
       </div>
     {/if}

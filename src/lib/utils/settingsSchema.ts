@@ -15,7 +15,7 @@
  *     "true"/"false", angka sebagai `type="text"`, rahasia sebagai teks biasa.
  *     Password SMTP dan secret key pembayaran terbaca di layar.
  *  3. `saveChanges()` mengirim `categories[activeTab].keys` saja, sedangkan
- *     `hasChanges` dihitung dari semua kategori. Terkonfirmasi lewat probe di
+ *     `hasChanges` dihitung dari semua kategori. Terukur lewat probe di
  *     viewport mobile: edit di General membuat Simpan menyala, lalu pindah ke
  *     Network dan menekan Simpan menyimpan key Network dan menimpa edit
  *     General. Di desktop jalurnya membuang edit (`discard: true`), di mobile
@@ -25,6 +25,10 @@
  * satuan, dan teks bantuan hidup di satu tempat dan bisa diuji. Halaman v2
  * merender dari skema ini, jadi menambah pengaturan tidak lagi berarti
  * menambah cabang `{#if}`.
+ *
+ * Terjemahan: label di skema adalah DEFAULT bahasa Indonesia. Halaman v2
+ * meng-override lewat `applyLabels()` dengan kamus dari $t — jadi struktur
+ * (key, tipe, syarat) tetap sumber kebenaran tunggal, teks mengikuti locale.
  */
 
 import type { FieldOption, FieldType, IconName } from '$lib/components/ds';
@@ -44,6 +48,17 @@ export interface SettingField {
   rows?: number;
   /** Bergantung pada field lain: hanya tampil kalau syaratnya benar. */
   visibleWhen?: { key: string; equals: string };
+  /**
+   * Tampil kalau nilai field lain ada di daftar.
+   *
+   * KENAPA: kredensial object storage dipakai bersama oleh S3 dan R2 —
+   * `storage_service.rs` membaca key `storage_s3_*` untuk kedua driver, dan
+   * halaman lama menampilkannya saat `driver === 's3' || driver === 'r2'`.
+   * Dengan `visibleWhen.equals: 's3'` saja, memilih R2 di v2 tidak memunculkan
+   * satu pun field kredensial: driver yang ditawarkan tapi tidak bisa
+   * dikonfigurasi.
+   */
+  whenOneOf?: { key: string; equals: string[] };
 }
 
 export interface SettingSection {
@@ -168,7 +183,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         fallback: '60',
         suffix: 'detik',
         min: 10,
-        visibleWhen: { key: 'mikrotik_alerting_enabled', equals: 'true' },
+        whenOneOf: { key: 'mikrotik_alerting_enabled', equals: ['true'] },
       },
       {
         key: 'mikrotik_alert_cpu_risk',
@@ -178,7 +193,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         suffix: '%',
         min: 1,
         max: 100,
-        visibleWhen: { key: 'mikrotik_alerting_enabled', equals: 'true' },
+        whenOneOf: { key: 'mikrotik_alerting_enabled', equals: ['true'] },
       },
       {
         key: 'mikrotik_alert_cpu_hot',
@@ -188,7 +203,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         suffix: '%',
         min: 1,
         max: 100,
-        visibleWhen: { key: 'mikrotik_alerting_enabled', equals: 'true' },
+        whenOneOf: { key: 'mikrotik_alerting_enabled', equals: ['true'] },
       },
       {
         key: 'mikrotik_alert_latency_risk_ms',
@@ -197,7 +212,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         fallback: '200',
         suffix: 'ms',
         min: 1,
-        visibleWhen: { key: 'mikrotik_alerting_enabled', equals: 'true' },
+        whenOneOf: { key: 'mikrotik_alerting_enabled', equals: ['true'] },
       },
       {
         key: 'mikrotik_alert_latency_hot_ms',
@@ -206,7 +221,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         fallback: '400',
         suffix: 'ms',
         min: 1,
-        visibleWhen: { key: 'mikrotik_alerting_enabled', equals: 'true' },
+        whenOneOf: { key: 'mikrotik_alerting_enabled', equals: ['true'] },
       },
       {
         key: 'mikrotik_incident_sla_warn_minutes',
@@ -281,40 +296,40 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: 'storage_s3_bucket',
         label: 'Bucket',
         type: 'text',
-        visibleWhen: { key: 'storage_driver', equals: 's3' },
+        whenOneOf: { key: 'storage_driver', equals: ['s3', 'r2'] },
       },
       {
         key: 'storage_s3_region',
         label: 'Region',
         type: 'text',
-        visibleWhen: { key: 'storage_driver', equals: 's3' },
+        whenOneOf: { key: 'storage_driver', equals: ['s3', 'r2'] },
       },
       {
         key: 'storage_s3_endpoint',
         label: 'Endpoint',
         type: 'text',
         placeholder: 'https://',
-        visibleWhen: { key: 'storage_driver', equals: 's3' },
+        whenOneOf: { key: 'storage_driver', equals: ['s3', 'r2'] },
       },
       {
         key: 'storage_s3_access_key',
         label: 'Access key',
         type: 'text',
-        visibleWhen: { key: 'storage_driver', equals: 's3' },
+        whenOneOf: { key: 'storage_driver', equals: ['s3', 'r2'] },
       },
       {
         key: 'storage_s3_secret_key',
         label: 'Secret key',
         /* Halaman lama merender ini sebagai teks biasa sehingga terbaca di layar. */
         type: 'password',
-        visibleWhen: { key: 'storage_driver', equals: 's3' },
+        whenOneOf: { key: 'storage_driver', equals: ['s3', 'r2'] },
       },
       {
         key: 'storage_s3_public_url',
         label: 'URL publik',
         type: 'text',
         placeholder: 'https://',
-        visibleWhen: { key: 'storage_driver', equals: 's3' },
+        whenOneOf: { key: 'storage_driver', equals: ['s3', 'r2'] },
       },
     ],
   },
@@ -360,8 +375,9 @@ export function initialValue(field: SettingField, serverValue: string | undefine
 
 /** Field terlihat atau tidak, berdasarkan nilai field lain. */
 export function isVisible(field: SettingField, values: Record<string, string>): boolean {
-  if (!field.visibleWhen) return true;
-  return values[field.visibleWhen.key] === field.visibleWhen.equals;
+  if (field.visibleWhen) return values[field.visibleWhen.key] === field.visibleWhen.equals;
+  if (field.whenOneOf) return field.whenOneOf.equals.includes(values[field.whenOneOf.key]);
+  return true;
 }
 
 /**
@@ -371,38 +387,94 @@ export function isVisible(field: SettingField, values: Record<string, string>): 
  * kecil dari `..._sla_warn_minutes`, dan halaman lama hanya menutupinya di
  * tampilan pratinjau (`slaBreachPreview` mengalikan warn × 2 kalau breach lebih
  * kecil) — jadi yang tersimpan tetap nilai tidak masuk akal.
+ *
+ * `messages`.opsional berasal dari $t halaman (locale aktif); tanpa itu,
+ * pesan default bahasa Indonesia dipakai — supaya fungsi ini tetap bisa
+ * diuji sendirian.
  */
-export function validate(values: Record<string, string>): Record<string, string> {
+export interface ValidationMessages {
+  slaBreach?: (warn: number) => string;
+  cpuHot?: (risk: number) => string;
+  latencyHot?: (risk: number) => string;
+  credentialRequired?: (label: string, driver: string) => string;
+}
+
+export function validate(
+  values: Record<string, string>,
+  messages: ValidationMessages = {},
+): Record<string, string> {
   const errors: Record<string, string> = {};
 
   const warn = Number.parseInt(values['mikrotik_incident_sla_warn_minutes'] ?? '', 10);
   const breach = Number.parseInt(values['mikrotik_incident_sla_breach_minutes'] ?? '', 10);
   if (Number.isFinite(warn) && Number.isFinite(breach) && breach <= warn) {
     errors['mikrotik_incident_sla_breach_minutes'] =
-      `Harus lebih besar dari SLA peringatan (${warn} menit).`;
+      messages.slaBreach?.(warn) ?? `Harus lebih besar dari SLA peringatan (${warn} menit).`;
   }
 
   const cpuRisk = Number.parseInt(values['mikrotik_alert_cpu_risk'] ?? '', 10);
   const cpuHot = Number.parseInt(values['mikrotik_alert_cpu_hot'] ?? '', 10);
   if (Number.isFinite(cpuRisk) && Number.isFinite(cpuHot) && cpuHot <= cpuRisk) {
-    errors['mikrotik_alert_cpu_hot'] = `Harus lebih besar dari CPU waspada (${cpuRisk}%).`;
+    errors['mikrotik_alert_cpu_hot'] =
+      messages.cpuHot?.(cpuRisk) ?? `Harus lebih besar dari CPU waspada (${cpuRisk}%).`;
   }
 
   const latRisk = Number.parseInt(values['mikrotik_alert_latency_risk_ms'] ?? '', 10);
   const latHot = Number.parseInt(values['mikrotik_alert_latency_hot_ms'] ?? '', 10);
   if (Number.isFinite(latRisk) && Number.isFinite(latHot) && latHot <= latRisk) {
-    errors['mikrotik_alert_latency_hot_ms'] = `Harus lebih besar dari latensi waspada (${latRisk} ms).`;
+    errors['mikrotik_alert_latency_hot_ms'] =
+      messages.latencyHot?.(latRisk) ??
+      `Harus lebih besar dari latensi waspada (${latRisk} ms).`;
   }
 
-  if (values['storage_driver'] === 's3') {
+  const driver = values['storage_driver'];
+  if (driver === 's3' || driver === 'r2') {
     for (const [key, label] of [
       ['storage_s3_bucket', 'Bucket'],
       ['storage_s3_access_key', 'Access key'],
       ['storage_s3_secret_key', 'Secret key'],
     ] as const) {
-      if (!(values[key] ?? '').trim()) errors[key] = `${label} wajib diisi untuk driver S3.`;
+      if (!(values[key] ?? '').trim()) {
+        errors[key] =
+          messages.credentialRequired?.(label, driver.toUpperCase()) ??
+          `${label} wajib diisi untuk driver ${driver.toUpperCase()}.`;
+      }
     }
   }
 
   return errors;
+}
+
+/**
+ * Kamus terjemahan yang dibangun halaman dari $t. Semua bagian opsional —
+ * yang tidak diberikan tetap memakai default Indonesia di skema.
+ */
+export interface SchemaLabels {
+  sections?: Record<string, { label?: string; desc?: string }>;
+  fields?: Record<string, { label?: string; help?: string; suffix?: string; options?: Record<string, string> }>;
+  panels?: Record<string, { label?: string; desc?: string }>;
+}
+
+export function applyLabels(labels: SchemaLabels): SettingSection[] {
+  return SETTING_SECTIONS.map((s) => ({
+    ...s,
+    ...(labels.sections?.[s.id] ?? {}),
+    fields: s.fields.map((f) => {
+      const fl = labels.fields?.[f.key];
+      if (!fl) return f;
+      return {
+        ...f,
+        ...(fl.label ? { label: fl.label } : {}),
+        ...(fl.help ? { help: fl.help } : {}),
+        ...(fl.suffix ? { suffix: fl.suffix } : {}),
+        options: f.options?.map((o) => ({ ...o, label: fl.options?.[o.value] ?? o.label })),
+      };
+    }),
+  }));
+}
+
+export function applyPanelLabels(
+  panels: Record<string, { label?: string; desc?: string }>,
+): Array<{ id: string; label: string; icon: IconName; desc: string }> {
+  return PANEL_SECTIONS.map((p) => ({ ...p, ...(panels?.[p.id] ?? {}) }));
 }

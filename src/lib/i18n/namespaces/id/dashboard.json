@@ -732,5 +732,8 @@
     "rm2": "Kebijakan user/group dan profil rute",
     "rm3": "Manajemen siklus hidup sertifikat dan kunci",
     "rm4": "Monitoring dan analitik sesi"
+  },
+  "order": {
+    "country_search": "Cari negara…"
   }
 }

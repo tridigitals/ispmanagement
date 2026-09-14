@@ -693,7 +693,7 @@
           bind:value={newLocationCountry}
           options={countryOptions}
           placeholder={ $t('dashboard.services_portal.order.pick_country') }
-          searchPlaceholder="Cari negara…"
+          searchPlaceholder={ $t('dashboard.order.country_search') }
           noResultsText="Negara tidak ditemukan"
           maxItems={50}
         />

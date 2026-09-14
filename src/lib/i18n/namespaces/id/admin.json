@@ -4563,7 +4563,207 @@
     "eyebrow": "Konfigurasi tenant",
     "desc": "Perubahan berlaku untuk seluruh pengguna di tenant ini.",
     "others": "Bagian lain",
-    "legacy_note": "masih memakai tampilan lama"
+    "legacy_note": "masih memakai tampilan lama",
+    "schema": {
+      "sections": {
+        "general": {
+          "label": "Umum",
+          "desc": "Identitas aplikasi, bahasa, dan mata uang yang dipakai di seluruh tenant."
+        },
+        "company": {
+          "label": "Perusahaan",
+          "desc": "Data yang tercetak di tagihan dan kuitansi."
+        },
+        "security": {
+          "label": "Keamanan",
+          "desc": "Verifikasi email dan pendaftaran mandiri pelanggan."
+        },
+        "network": {
+          "label": "Jaringan",
+          "desc": "Ambang peringatan router dan aturan eskalasi insiden."
+        },
+        "storage": {
+          "label": "Penyimpanan",
+          "desc": "Lokasi penyimpanan berkas unggahan."
+        }
+      },
+      "fields": {
+        "app_name": {
+          "label": "Nama aplikasi"
+        },
+        "app_description": {
+          "label": "Deskripsi",
+          "help": "Muncul di halaman login dan judul tab browser."
+        },
+        "support_email": {
+          "label": "Email dukungan",
+          "help": "Alamat yang ditampilkan ke pelanggan saat butuh bantuan."
+        },
+        "default_locale": {
+          "label": "Bahasa bawaan",
+          "options": {
+            "id": "Bahasa Indonesia",
+            "en": "English (US)"
+          }
+        },
+        "currency_code": {
+          "label": "Mata uang",
+          "help": "Mengubah format angka di tagihan dan laporan.",
+          "options": {
+            "IDR": "IDR — Rupiah",
+            "USD": "USD — Dolar AS"
+          }
+        },
+        "organization_name": {
+          "label": "Nama badan usaha"
+        },
+        "company_address": {
+          "label": "Alamat"
+        },
+        "company_phone": {
+          "label": "Telepon"
+        },
+        "company_email": {
+          "label": "Email"
+        },
+        "company_npwp": {
+          "label": "NPWP"
+        },
+        "company_website": {
+          "label": "Situs web"
+        },
+        "invoice_footer_note": {
+          "label": "Catatan kaki tagihan",
+          "help": "Tampil di bagian bawah setiap tagihan yang dicetak."
+        },
+        "auth_require_email_verification": {
+          "label": "Wajib verifikasi email",
+          "help": "Butuh konfigurasi Email yang sudah berjalan. Tanpa itu pengguna baru tidak bisa masuk."
+        },
+        "customer_self_registration_enabled": {
+          "label": "Pendaftaran mandiri pelanggan",
+          "help": "Mengizinkan calon pelanggan membuat akun sendiri lewat portal."
+        },
+        "mikrotik_alerting_enabled": {
+          "label": "Peringatan router aktif"
+        },
+        "mikrotik_alert_offline_after_secs": {
+          "label": "Dianggap offline setelah"
+        },
+        "mikrotik_alert_cpu_risk": {
+          "label": "CPU waspada"
+        },
+        "mikrotik_alert_cpu_hot": {
+          "label": "CPU kritis"
+        },
+        "mikrotik_alert_latency_risk_ms": {
+          "label": "Latensi waspada"
+        },
+        "mikrotik_alert_latency_hot_ms": {
+          "label": "Latensi kritis"
+        },
+        "mikrotik_incident_sla_warn_minutes": {
+          "label": "SLA peringatan",
+          "help": "Insiden yang belum ditangani selama ini akan ditandai."
+        },
+        "mikrotik_incident_sla_breach_minutes": {
+          "label": "SLA terlampaui",
+          "help": "Harus lebih besar dari SLA peringatan."
+        },
+        "mikrotik_incident_correlation_enabled": {
+          "label": "Korelasi insiden",
+          "help": "Menggabungkan beberapa peringatan dari router yang sama menjadi satu insiden."
+        },
+        "mikrotik_incident_auto_escalation_enabled": {
+          "label": "Eskalasi otomatis"
+        },
+        "mikrotik_incident_escalation_minutes": {
+          "label": "Eskalasi setelah"
+        },
+        "mikrotik_alert_email_enabled": {
+          "label": "Kirim peringatan via email"
+        },
+        "mikrotik_incident_assignment_email_enabled": {
+          "label": "Email saat insiden ditugaskan"
+        },
+        "pppoe_auto_apply_on_save_enabled": {
+          "label": "Terapkan PPPoE otomatis saat disimpan",
+          "help": "Perubahan akun langsung dikirim ke router tanpa langkah Terapkan manual."
+        },
+        "storage_driver": {
+          "label": "Driver",
+          "options": {
+            "system": "Bawaan sistem (dikelola)",
+            "s3": "AWS S3",
+            "r2": "Cloudflare R2"
+          }
+        },
+        "storage_s3_bucket": {
+          "label": "Bucket"
+        },
+        "storage_s3_region": {
+          "label": "Region"
+        },
+        "storage_s3_endpoint": {
+          "label": "Endpoint"
+        },
+        "storage_s3_access_key": {
+          "label": "Access key"
+        },
+        "storage_s3_secret_key": {
+          "label": "Secret key"
+        },
+        "storage_s3_public_url": {
+          "label": "URL publik"
+        }
+      },
+      "panels": {
+        "branding": {
+          "label": "Merek & Domain",
+          "desc": "Logo, nama tampilan, dan domain kustom."
+        },
+        "billing_plan": {
+          "label": "Tagihan & Paket",
+          "desc": "Paket langganan tenant ini."
+        },
+        "email": {
+          "label": "Email",
+          "desc": "Pengirim email keluar dan uji koneksi."
+        },
+        "payment": {
+          "label": "Pembayaran",
+          "desc": "Gerbang pembayaran dan rekening manual."
+        },
+        "service": {
+          "label": "Layanan",
+          "desc": "Penerbitan tagihan otomatis dan penangguhan."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "desc": "Gateway WhatsApp untuk notifikasi."
+        },
+        "event_notifications": {
+          "label": "Notifikasi Event",
+          "desc": "Event mana yang dikirim ke kanal mana."
+        }
+      },
+      "units": {
+        "detik": "detik",
+        "%": "%",
+        "ms": "ms",
+        "menit": "menit"
+      }
+    },
+    "err_sla_breach": "Harus lebih besar dari SLA peringatan ({warn} menit).",
+    "err_cpu_hot": "Harus lebih besar dari CPU waspada ({risk}%).",
+    "err_lat_hot": "Harus lebih besar dari latensi waspada ({risk} ms).",
+    "err_cred_required": "{label} wajib diisi untuk driver {driver}.",
+    "toast_load_failed": "Gagal memuat pengaturan",
+    "toast_save_failed": "Gagal menyimpan pengaturan",
+    "toast_saved": "{n} pengaturan disimpan",
+    "toast_partial": "{failed} dari {total} pengaturan gagal disimpan",
+    "toast_blocking": "{n} field masih perlu diperbaiki",
+    "hidden_note": "{n} pengaturan lain muncul setelah opsi terkait diaktifkan."
   },
   "storage": {
     "title": "Penyimpanan",

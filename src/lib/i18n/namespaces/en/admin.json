@@ -4562,7 +4562,207 @@
     "eyebrow": "Tenant configuration",
     "desc": "Changes apply to all users in this tenant.",
     "others": "Other sections",
-    "legacy_note": "still using the legacy view"
+    "legacy_note": "still using the legacy view",
+    "schema": {
+      "sections": {
+        "general": {
+          "label": "General",
+          "desc": "App identity, language and currency used across this tenant."
+        },
+        "company": {
+          "label": "Company",
+          "desc": "Data printed on invoices and receipts."
+        },
+        "security": {
+          "label": "Security",
+          "desc": "Email verification and customer self-registration."
+        },
+        "network": {
+          "label": "Network",
+          "desc": "Router alert thresholds and incident escalation rules."
+        },
+        "storage": {
+          "label": "Storage",
+          "desc": "Where uploaded files are stored."
+        }
+      },
+      "fields": {
+        "app_name": {
+          "label": "App name"
+        },
+        "app_description": {
+          "label": "Description",
+          "help": "Shown on the login page and browser tab title."
+        },
+        "support_email": {
+          "label": "Support email",
+          "help": "Address shown to customers when they need help."
+        },
+        "default_locale": {
+          "label": "Default language",
+          "options": {
+            "id": "Bahasa Indonesia",
+            "en": "English (US)"
+          }
+        },
+        "currency_code": {
+          "label": "Currency",
+          "help": "Changes number formatting in invoices and reports.",
+          "options": {
+            "IDR": "IDR — Rupiah",
+            "USD": "USD — US Dollar"
+          }
+        },
+        "organization_name": {
+          "label": "Legal entity name"
+        },
+        "company_address": {
+          "label": "Address"
+        },
+        "company_phone": {
+          "label": "Phone"
+        },
+        "company_email": {
+          "label": "Email"
+        },
+        "company_npwp": {
+          "label": "Tax ID (NPWP)"
+        },
+        "company_website": {
+          "label": "Website"
+        },
+        "invoice_footer_note": {
+          "label": "Invoice footer note",
+          "help": "Printed at the bottom of every invoice."
+        },
+        "auth_require_email_verification": {
+          "label": "Require email verification",
+          "help": "Needs working Email configuration. Without it new users cannot sign in."
+        },
+        "customer_self_registration_enabled": {
+          "label": "Customer self-registration",
+          "help": "Allows prospects to create their own portal account."
+        },
+        "mikrotik_alerting_enabled": {
+          "label": "Router alerts active"
+        },
+        "mikrotik_alert_offline_after_secs": {
+          "label": "Consider offline after"
+        },
+        "mikrotik_alert_cpu_risk": {
+          "label": "CPU warning"
+        },
+        "mikrotik_alert_cpu_hot": {
+          "label": "CPU critical"
+        },
+        "mikrotik_alert_latency_risk_ms": {
+          "label": "Latency warning"
+        },
+        "mikrotik_alert_latency_hot_ms": {
+          "label": "Latency critical"
+        },
+        "mikrotik_incident_sla_warn_minutes": {
+          "label": "SLA warning",
+          "help": "Incidents unhandled for this long get flagged."
+        },
+        "mikrotik_incident_sla_breach_minutes": {
+          "label": "SLA breached",
+          "help": "Must be greater than the SLA warning."
+        },
+        "mikrotik_incident_correlation_enabled": {
+          "label": "Incident correlation",
+          "help": "Merges multiple alerts from the same router into one incident."
+        },
+        "mikrotik_incident_auto_escalation_enabled": {
+          "label": "Auto-escalation"
+        },
+        "mikrotik_incident_escalation_minutes": {
+          "label": "Escalate after"
+        },
+        "mikrotik_alert_email_enabled": {
+          "label": "Send alerts by email"
+        },
+        "mikrotik_incident_assignment_email_enabled": {
+          "label": "Email on incident assignment"
+        },
+        "pppoe_auto_apply_on_save_enabled": {
+          "label": "Auto-apply PPPoE on save",
+          "help": "Account changes go to the router without a manual Apply step."
+        },
+        "storage_driver": {
+          "label": "Driver",
+          "options": {
+            "system": "System default (managed)",
+            "s3": "AWS S3",
+            "r2": "Cloudflare R2"
+          }
+        },
+        "storage_s3_bucket": {
+          "label": "Bucket"
+        },
+        "storage_s3_region": {
+          "label": "Region"
+        },
+        "storage_s3_endpoint": {
+          "label": "Endpoint"
+        },
+        "storage_s3_access_key": {
+          "label": "Access key"
+        },
+        "storage_s3_secret_key": {
+          "label": "Secret key"
+        },
+        "storage_s3_public_url": {
+          "label": "Public URL"
+        }
+      },
+      "panels": {
+        "branding": {
+          "label": "Brand & Domain",
+          "desc": "Logo, display name, and custom domain."
+        },
+        "billing_plan": {
+          "label": "Billing & Plan",
+          "desc": "This tenant's subscription plan."
+        },
+        "email": {
+          "label": "Email",
+          "desc": "Outgoing mail sender and connection test."
+        },
+        "payment": {
+          "label": "Payment",
+          "desc": "Payment gateways and manual bank accounts."
+        },
+        "service": {
+          "label": "Service",
+          "desc": "Automatic invoice issuance and suspension."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "desc": "WhatsApp gateway for notifications."
+        },
+        "event_notifications": {
+          "label": "Event Notifications",
+          "desc": "Which events go to which channels."
+        }
+      },
+      "units": {
+        "detik": "seconds",
+        "%": "%",
+        "ms": "ms",
+        "menit": "minutes"
+      }
+    },
+    "err_sla_breach": "Must be greater than the SLA warning ({warn} min).",
+    "err_cpu_hot": "Must be greater than the CPU warning ({risk}%).",
+    "err_lat_hot": "Must be greater than the latency warning ({risk} ms).",
+    "err_cred_required": "{label} is required for the {driver} driver.",
+    "toast_load_failed": "Failed to load settings",
+    "toast_save_failed": "Failed to save settings",
+    "toast_saved": "{n} settings saved",
+    "toast_partial": "{failed} of {total} settings failed to save",
+    "toast_blocking": "{n} fields still need fixing",
+    "hidden_note": "{n} more settings appear once the related option is enabled."
   },
   "storage": {
     "title": "Storage",

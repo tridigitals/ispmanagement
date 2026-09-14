@@ -45,20 +45,12 @@
   import { toast } from '$lib/stores/toast';
   import type { Setting } from '$lib/api/client';
   import { t } from 'svelte-i18n';
-  import {
-    AppShell,
-    Button,
-    Card,
-    Field,
-    PageHeader,
-    SaveBar,
-    Tabs,
-    AttentionPanel,
-    Icon,
-  } from '$lib/components/ds';
+  import { AppShell, Card, Field, PageHeader, SaveBar, Tabs, Icon } from '$lib/components/ds';
   import {
     PANEL_SECTIONS,
     SETTING_SECTIONS,
+    applyLabels,
+    applyPanelLabels,
     initialValue,
     isVisible,
     schemaKeys,
@@ -75,8 +67,71 @@
   let baseline = $state<Values>({});
   let values = $state<Values>({});
 
-  const errors = $derived(validate(values));
-  const sections = $derived(SETTING_SECTIONS);
+  /* Label & pesan dirender dari kamus $t; default Indonesia skema hanya
+     fallback kalau key terjemahan belum ada. svelte-i18n mem-format string,
+     bukan objek, jadi kamus disusun per-key di sini. */
+  const dict = $derived.by(() => {
+    const g = (path: string): string | undefined => {
+      const v = $t(`admin.settings_v2.schema.${path}`);
+      return typeof v === 'string' && v && !v.startsWith('admin.') ? v : undefined;
+    };
+    const sections: Record<string, { label: string; desc: string }> = {};
+    for (const s of SETTING_SECTIONS) {
+      const label = g(`sections.${s.id}.label`);
+      const desc = g(`sections.${s.id}.desc`);
+      if (label || desc) sections[s.id] = { label: label ?? s.label, desc: desc ?? s.desc };
+    }
+    const fields: Record<
+      string,
+      { label: string; help?: string; suffix?: string; options?: Record<string, string> }
+    > = {};
+    for (const s of SETTING_SECTIONS) {
+      for (const f of s.fields) {
+        const entry: { label: string; help?: string; suffix?: string; options?: Record<string, string> } =
+          { label: g(`fields.${f.key}.label`) ?? f.label };
+        const help = g(`fields.${f.key}.help`) ?? (f.help ? f.help : undefined);
+        if (help) entry.help = help;
+        if (f.suffix) entry.suffix = g(`units.${f.suffix}`) ?? f.suffix;
+        if (f.options) {
+          entry.options = {};
+          for (const o of f.options) entry.options[o.value] = g(`fields.${f.key}.options.${o.value}`) ?? o.label;
+        }
+        fields[f.key] = entry;
+      }
+    }
+    return { sections, fields };
+  });
+  const sections = $derived(applyLabels(dict));
+  const panelSections = $derived(
+    applyPanelLabels(
+      Object.fromEntries(
+        PANEL_SECTIONS.map((p) => {
+          const label = $t(`admin.settings_v2.schema.panels.${p.id}.label`);
+          const desc = $t(`admin.settings_v2.schema.panels.${p.id}.desc`);
+          return [
+            p.id,
+            {
+              label: typeof label === 'string' && label && !label.startsWith('admin.') ? label : p.label,
+              desc: typeof desc === 'string' && desc && !desc.startsWith('admin.') ? desc : p.desc,
+            },
+          ];
+        }),
+      ),
+    ),
+  );
+
+  function validationMessages() {
+    return {
+      slaBreach: (warn: number) =>
+        $t('admin.settings_v2.err_sla_breach', { values: { warn } }),
+      cpuHot: (risk: number) => $t('admin.settings_v2.err_cpu_hot', { values: { risk } }),
+      latencyHot: (risk: number) => $t('admin.settings_v2.err_lat_hot', { values: { risk } }),
+      credentialRequired: (label: string, driver: string) =>
+        $t('admin.settings_v2.err_cred_required', { values: { label, driver } }),
+    };
+  }
+
+  const errors = $derived(validate(values, validationMessages()));
   const activeSection = $derived(sections.find((s) => s.id === active) ?? sections[0]);
 
   /* Semua key yang berbeda dari baseline, LINTAS bagian — bukan hanya bagian
@@ -142,7 +197,7 @@
       const rows = await api.settings.getAll();
       applyServerData(rows);
     } catch (error: any) {
-      toast.error(error?.message || 'Gagal memuat pengaturan');
+      toast.error(error?.message || $t('admin.settings_v2.toast_load_failed'));
     } finally {
       loading = false;
     }
@@ -154,7 +209,7 @@
 
   async function save() {
     if (blockingErrors.length > 0) {
-      toast.error(`${blockingErrors.length} field masih perlu diperbaiki`);
+      toast.error($t('admin.settings_v2.toast_blocking', { values: { n: blockingErrors.length } }));
       return;
     }
 
@@ -174,12 +229,14 @@
       applyServerData(rows);
 
       if (failed > 0) {
-        toast.error(`${failed} dari ${results.length} pengaturan gagal disimpan`);
+        toast.error(
+          $t('admin.settings_v2.toast_partial', { values: { failed, total: results.length } }),
+        );
       } else {
-        toast.success(`${results.length} pengaturan disimpan`);
+        toast.success($t('admin.settings_v2.toast_saved', { values: { n: results.length } }));
       }
     } catch (error: any) {
-      toast.error(error?.message || 'Gagal menyimpan pengaturan');
+      toast.error(error?.message || $t('admin.settings_v2.toast_save_failed'));
     } finally {
       saving = false;
     }
@@ -249,8 +306,9 @@
                "bawaan sistem" — form terlihat jauh lebih panjang dari yang
                sebenarnya perlu diisi. -->
           <p class="mt-4 border-t border-ink-100 pt-4 text-sm text-ink-400">
-            {activeSection.fields.length - visibleFields.length} pengaturan lain muncul setelah
-            opsi terkait diaktifkan.
+            { $t('admin.settings_v2.hidden_note', {
+              values: { n: activeSection.fields.length - visibleFields.length },
+            }) }
           </p>
         {/if}
       </Card>
@@ -273,7 +331,7 @@
           <span class="text-sm text-ink-400">{ $t('admin.settings_v2.legacy_note') }</span>
         {/snippet}
         <ul class="grid gap-2 sm:grid-cols-2">
-          {#each PANEL_SECTIONS as s (s.id)}
+          {#each panelSections as s (s.id)}
             <li>
               <a
                 href={`/admin/settings#${s.id}`}
