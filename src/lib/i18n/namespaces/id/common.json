@@ -175,5 +175,6 @@
   "no_results_for": "Tidak ada hasil untuk \"{q}\"",
   "cards": "Kartu",
   "table": "Tabel",
-  "redirecting": "Mengalihkan..."
+  "redirecting": "Mengalihkan...",
+  "nothing_to_export": "Tidak ada data untuk diekspor"
 }

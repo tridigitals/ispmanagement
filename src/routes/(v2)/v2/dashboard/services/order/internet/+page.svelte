@@ -743,7 +743,7 @@
       <Button variant="secondary" onclick={() => (showAddLocationModal = false)} disabled={creatingLocation}>
         { $t('dashboard.services_portal.order.cancel_btn') }
       </Button>
-      <Button loading={creatingLocation} icon="check" disabled={!newLocationLabel.trim()}>
+      <Button loading={creatingLocation} icon="check" disabled={!newLocationLabel.trim()} onclick={() => void saveMyLocation()}>
         {creatingLocation ? $t('dashboard.services_portal.order.saving_btn') : $t('dashboard.services_portal.order.save_btn')}
       </Button>
     </div>

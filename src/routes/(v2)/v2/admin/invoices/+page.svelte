@@ -198,6 +198,27 @@
     }
   }
 
+  async function resendOne(inv: Invoice) {
+    if (sending) return;
+    sending = true;
+    notice = '';
+    try {
+      const res = await api.payment.bulkSendInvoices({
+        invoice_ids: [inv.id],
+        channels: ['email', 'notification'],
+        attach_pdf: true,
+      });
+      const parts = [`terkirim ${res.sent_count}`];
+      if (res.skipped_count > 0) parts.push(`dilewati ${res.skipped_count}`);
+      if (res.failed_count > 0) parts.push(`gagal ${res.failed_count}`);
+      notice = `${inv.invoice_number ?? inv.id}: ${parts.join(', ')}.`;
+    } catch (e) {
+      err = `Gagal mengirim tagihan: ${(e as Error)?.message ?? e}`;
+    } finally {
+      sending = false;
+    }
+  }
+
   async function generateDue() {
     generating = true;
     notice = '';
@@ -393,8 +414,20 @@
             rest={canManage
               ? [
                   { label: $t('admin.invoices.v2list.pay_page'), icon: 'chevronRight', onclick: () => window.open(`/pay/${inv.id}`, '_blank') },
-                  { label: $t('admin.invoices.v2list.verify_page'), icon: 'check' },
-                  { label: $t('admin.invoices.v2list.resend'), icon: 'mail' },
+                  {
+                    label: $t('admin.invoices.v2list.verify_page'),
+                    icon: 'check' as const,
+                    disabled: inv.status !== 'verification_pending' && inv.status !== 'pending',
+                    disabledReason: $t('admin.invoices.v2list.verify_only_pending'),
+                    onclick: () => goto(`/v2/admin/invoices/${inv.id}`),
+                  },
+                  {
+                    label: $t('admin.invoices.v2list.resend'),
+                    icon: 'mail' as const,
+                    disabled: inv.status !== 'pending' && inv.status !== 'verification_pending',
+                    disabledReason: $t('admin.invoices.v2list.resend_only_pending'),
+                    onclick: () => void resendOne(inv),
+                  },
                 ]
               : []}
           />

@@ -13,7 +13,7 @@ function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<
 }
 
 export const loadRouterFormModal = createCachedLoader(async () => {
-  const { default: RouterFormModalComponent } = await import('./RouterFormModal.svelte');
+  const { default: RouterFormModalComponent } = await import('$lib/components/network/RouterFormModal.svelte');
 
   return {
     RouterFormModalComponent: RouterFormModalComponent as DeferredComponent,

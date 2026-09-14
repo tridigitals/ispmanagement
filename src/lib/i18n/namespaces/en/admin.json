@@ -638,7 +638,10 @@
       "whatsapp_body_required": "WhatsApp message is required",
       "whatsapp_failed": "WhatsApp gateway failed to send message",
       "whatsapp_send_failed": "Failed to send WhatsApp message",
-      "whatsapp_sent": "WhatsApp message sent"
+      "whatsapp_sent": "WhatsApp message sent",
+      "tpl_payment_reminder": "Hi {name}, this is a reminder about your internet service bill. If you have already paid, please ignore this message. Thank you.",
+      "tpl_install_followup": "Hi {name}, we would like to confirm your internet installation schedule. Please reply if anything changes.",
+      "tpl_service_check": "Hi {name}, checking that your internet service is running normally. Please reply if there are issues."
     },
     "search": "Search customers...",
     "results": "results",
@@ -1366,7 +1369,9 @@
       "chip_pending": "Awaiting installation",
       "chip_none": "No service",
       "n_active": "{n} active services",
-      "no_service": "No service yet"
+      "no_service": "No service yet",
+      "no_sub_for_invoice": "This customer has no active subscription to invoice.",
+      "invoice_created": "Invoice created."
     }
   },
   "ftth_assets": {
@@ -3923,7 +3928,9 @@
         "paid": "Paid",
         "failed": "Failed"
       },
-      "col_actions": "Actions"
+      "col_actions": "Actions",
+      "verify_only_pending": "Only pending/verification invoices can be verified.",
+      "resend_only_pending": "Only unpaid invoices can be resent."
     }
   },
   "billing_collection": {

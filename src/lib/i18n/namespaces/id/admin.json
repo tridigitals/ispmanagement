@@ -364,7 +364,10 @@
       "whatsapp_body_required": "Pesan WhatsApp wajib diisi",
       "whatsapp_failed": "Gateway WhatsApp gagal mengirim pesan",
       "whatsapp_send_failed": "Gagal mengirim pesan WhatsApp",
-      "whatsapp_sent": "Pesan WhatsApp terkirim"
+      "whatsapp_sent": "Pesan WhatsApp terkirim",
+      "tpl_payment_reminder": "Halo {name}, kami ingin mengingatkan tagihan layanan internet Anda. Jika sudah melakukan pembayaran, mohon abaikan pesan ini. Terima kasih.",
+      "tpl_install_followup": "Halo {name}, kami ingin konfirmasi jadwal instalasi layanan internet Anda. Mohon balas pesan ini jika ada perubahan jadwal.",
+      "tpl_service_check": "Halo {name}, kami ingin memastikan layanan internet Anda berjalan normal. Jika ada kendala, silakan balas pesan ini."
     },
     "search": "Cari pelanggan...",
     "results": "hasil",
@@ -1093,7 +1096,9 @@
       "chip_pending": "Menunggu instalasi",
       "chip_none": "Tanpa layanan",
       "n_active": "{n} layanan aktif",
-      "no_service": "Belum ada layanan"
+      "no_service": "Belum ada layanan",
+      "no_sub_for_invoice": "Pelanggan ini belum punya langganan aktif untuk dibuatkan tagihan.",
+      "invoice_created": "Tagihan dibuat."
     }
   },
   "ftth_assets": {
@@ -3650,7 +3655,9 @@
         "paid": "Lunas",
         "failed": "Gagal"
       },
-      "col_actions": "Aksi"
+      "col_actions": "Aksi",
+      "verify_only_pending": "Hanya tagihan menunggu/pending yang bisa diverifikasi.",
+      "resend_only_pending": "Hanya tagihan belum lunas yang bisa dikirim ulang."
     }
   },
   "billing_collection": {

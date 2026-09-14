@@ -18,7 +18,10 @@
   */
   import { onDestroy, onMount } from 'svelte';
   import { goto } from '$app/navigation';
+  import { get as getStore } from 'svelte/store';
+  import { page as pageStore } from '$app/stores';
   import { api } from '$lib/api/client';
+  import RouterFormModal from '$lib/components/network/RouterFormModal.svelte';
   import { extractApiErrorMessage } from '$lib/api/core';
   import { can } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
@@ -53,6 +56,8 @@
     username: string;
     identity?: string | null;
     ros_version?: string | null;
+    latitude?: number | string | null;
+    longitude?: number | string | null;
   };
 
   let rows = $state<Row[]>([]);
@@ -61,6 +66,158 @@
   let now = $state(Date.now());
   let testing = $state<string | null>(null);
   let tick: ReturnType<typeof setInterval> | null = null;
+
+  /* ── form tambah / ubah router ──────────────────────────────────────── */
+  let formShow = $state(false);
+  let formSaving = $state(false);
+  let editing: Row | null = $state(null);
+  let formName = $state('');
+  let formHost = $state('');
+  let formPort = $state<number>(8728);
+  let formUsername = $state('');
+  let formPassword = $state('');
+  let formLatitude = $state('');
+  let formLongitude = $state('');
+  let formEnabled = $state(true);
+  let formMaintenanceEnabled = $state(false);
+  let formMaintenanceUntilLocal = $state('');
+  let formMaintenanceReason = $state('');
+
+  function isoToLocalInput(iso?: string | null) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function localInputToIso(local: string): string | null {
+    if (!local) return null;
+    const d = new Date(local);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  function resetForm() {
+    editing = null;
+    formName = '';
+    formHost = '';
+    formPort = 8728;
+    formUsername = '';
+    formPassword = '';
+    formLatitude = '';
+    formLongitude = '';
+    formEnabled = true;
+    formMaintenanceEnabled = false;
+    formMaintenanceUntilLocal = '';
+    formMaintenanceReason = '';
+  }
+
+  function openCreate() {
+    resetForm();
+    formShow = true;
+  }
+
+  function openEdit(r: Row) {
+    editing = r;
+    formName = r.name || '';
+    formHost = r.host || '';
+    formPort = Number(r.port || 8728);
+    formUsername = r.username || '';
+    formPassword = '';
+    formLatitude = r.latitude != null ? String(r.latitude) : '';
+    formLongitude = r.longitude != null ? String(r.longitude) : '';
+    formEnabled = r.enabled ?? true;
+    const untilIso = r.maintenance_until ?? null;
+    const untilMs = untilIso ? new Date(untilIso).getTime() : NaN;
+    formMaintenanceEnabled = Number.isFinite(untilMs) ? untilMs > Date.now() : false;
+    formMaintenanceUntilLocal = isoToLocalInput(untilIso);
+    formMaintenanceReason = r.maintenance_reason || '';
+    formShow = true;
+  }
+
+  async function saveForm() {
+    const name = formName.trim();
+    const host = formHost.trim();
+    if (!name || !host || !formUsername.trim()) {
+      toast.error($t('common.validation_error'));
+      return;
+    }
+    if (!editing && !formPassword.trim()) {
+      toast.error($t('admin.network.routers.form.password'));
+      return;
+    }
+    const latRaw = formLatitude.trim();
+    const lngRaw = formLongitude.trim();
+    const parsedLat = latRaw ? Number(latRaw) : NaN;
+    const parsedLng = lngRaw ? Number(lngRaw) : NaN;
+    if (latRaw && (Number.isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90)) {
+      toast.error($t('network.map.latitude_range_error'));
+      return;
+    }
+    if (lngRaw && (Number.isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180)) {
+      toast.error($t('network.map.longitude_range_error'));
+      return;
+    }
+    const latitude = latRaw ? parsedLat : null;
+    const longitude = lngRaw ? parsedLng : null;
+    formSaving = true;
+    try {
+      const maintenance_until = formMaintenanceEnabled ? localInputToIso(formMaintenanceUntilLocal) : null;
+      const maintenance_reason = formMaintenanceEnabled ? formMaintenanceReason.trim() || null : null;
+      if (editing) {
+        await api.mikrotik.routers.update(editing.id, {
+          name,
+          host,
+          port: formPort,
+          username: formUsername.trim(),
+          password: formPassword.trim() ? formPassword : undefined,
+          enabled: formEnabled,
+          maintenance_until,
+          maintenance_reason,
+          latitude,
+          longitude,
+        });
+        toast.success($t('admin.network.routers.toasts.updated'));
+      } else {
+        await api.mikrotik.routers.create({
+          name,
+          host,
+          port: formPort,
+          username: formUsername.trim(),
+          password: formPassword,
+          enabled: formEnabled,
+          maintenance_until,
+          maintenance_reason,
+          latitude,
+          longitude,
+        });
+        toast.success($t('admin.network.routers.toasts.created'));
+      }
+      formShow = false;
+      await load();
+    } catch (e) {
+      toast.error(extractApiErrorMessage(e));
+    } finally {
+      formSaving = false;
+    }
+  }
+
+  /* Tautan ?new=1 / ?edit=<id> dari Beranda & menu baris. */
+  function applyDeepLink() {
+    const sp = getStore(pageStore).url.searchParams;
+    if (!$can('manage', 'router_inventory')) return;
+    if (sp.get('new') === '1') {
+      openCreate();
+      goto('/v2/admin/network/routers', { replaceState: true, keepFocus: true });
+      return;
+    }
+    const editId = sp.get('edit');
+    if (editId) {
+      const r = rows.find((x) => x.id === editId);
+      if (r) openEdit(r);
+      goto('/v2/admin/network/routers', { replaceState: true, keepFocus: true });
+    }
+  }
 
   const stats = $derived(summarize(rows, now));
 
@@ -149,7 +306,7 @@
       goto('/unauthorized');
       return;
     }
-    void load();
+    void load().then(() => applyDeepLink());
 
     /* Halaman lama memanggil API tiap 5 detik padahal poller backend hanya
        berjalan tiap 5 menit — 60 permintaan per siklus data yang sama.
@@ -175,7 +332,7 @@
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={load}>{ $t('network.olt.refresh') }</Button>
       {#if $can('manage', 'router_inventory')}
-        <Button icon="plus" href="/v2/admin/network/routers?new=1">{ $t('admin.network.routers.v2list.add') }</Button>
+        <Button icon="plus" onclick={openCreate}>{ $t('admin.network.routers.v2list.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -289,7 +446,7 @@
                       {
                         label: $t('common.edit'),
                         icon: 'cog' as const,
-                        onclick: () => goto(`/v2/admin/network/routers?edit=${r.id}`),
+                        onclick: () => openEdit(r),
                       },
                     ]
                   : []),
@@ -301,3 +458,20 @@
     </Card>
   </div>
 </AppShell>
+
+<RouterFormModal
+  bind:show={formShow}
+  editing={editing}
+  bind:formName
+  bind:formHost
+  bind:formPort
+  bind:formUsername
+  bind:formPassword
+  bind:formLatitude
+  bind:formLongitude
+  bind:formEnabled
+  bind:formMaintenanceEnabled
+  bind:formMaintenanceUntilLocal
+  bind:formMaintenanceReason
+  onSubmit={() => void saveForm()}
+/>

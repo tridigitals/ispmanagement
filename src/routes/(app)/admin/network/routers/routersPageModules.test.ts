@@ -4,7 +4,7 @@ const sentinels = vi.hoisted(() => ({
   routerFormModal: { name: 'router-form-modal' },
 }));
 
-vi.mock('./RouterFormModal.svelte', () => ({
+vi.mock('$lib/components/network/RouterFormModal.svelte', () => ({
   default: sentinels.routerFormModal,
 }));
 

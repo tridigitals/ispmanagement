@@ -175,5 +175,6 @@
   "no_results_for": "No results for \"{q}\".",
   "cards": "Cards",
   "table": "Table",
-  "redirecting": "Redirecting..."
+  "redirecting": "Redirecting...",
+  "nothing_to_export": "Nothing to export"
 }
