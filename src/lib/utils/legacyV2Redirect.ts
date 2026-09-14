@@ -10,39 +10,8 @@
  * punya area sendiri yang belum dimigrasi.
  */
 
-/**
- * Panel settings yang BELUM ada padanannya di v2 (halaman v2 hanya menampilkan
- * kartu "Bagian lain" yang menunjuk halaman lama via hash).
- */
-const SETTINGS_LEGACY_ONLY_PANELS = new Set([
-  'branding',
-  'billing_plan',
-  'email',
-  'payment',
-  'service',
-  'whatsapp',
-  'event_notifications',
-]);
-
-/**
- * Cari padanan v2 untuk path lama. Return null = tidak ada padanan, biarkan
- * halaman lama dirender (fallback aman).
- *
- * `hash` ikut diperiksa karena halaman lama memakai hash utk memilih tab
- * (`/admin/settings#email`). Tanpa ini, kartu "Bagian lain" di v2 yang
- * menunjuk /admin/settings#<panel> dipantul balik ke /v2/admin/settings —
- * klik terasa mati. Dengan ini, hash panel yang belum dimigrasi me-render
- * halaman lama pada tab yang dituju.
- */
-export function v2RedirectFor(path: string, hash?: string): string | null {
+export function v2RedirectFor(path: string): string | null {
   if (!path || path === '/') return null;
-  if (
-    path === '/admin/settings' &&
-    hash &&
-    SETTINGS_LEGACY_ONLY_PANELS.has(decodeURIComponent(hash).trim().replace(/^#/, ''))
-  ) {
-    return null;
-  }
   if (path.startsWith('/v2')) return null; // sudah di v2
   if (path.startsWith('/superadmin')) return null; // area superadmin, tidak dimigrasi
 

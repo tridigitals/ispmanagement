@@ -282,10 +282,14 @@
 
     // Cutover v2: route lama punya padanan di /v2 -> redirect. Rollback:
     // hapus blok ini (+ util legacyV2Redirect) — halaman lama tetap utuh.
-    const v2Target = v2RedirectFor(canonicalPath, window.location.hash);
+    const v2Target = v2RedirectFor(canonicalPath);
     if (v2Target) {
-      debugLog('cutover-v2-redirect', { from: canonicalPath, to: v2Target });
-      goto(v2Target);
+      /* Hash ikut dipindah: halaman lama memilih tab via #<panel> dan halaman
+         v2 membaca hash yang sama utk tab yang sama (deep-link eksternal ke
+         /admin/settings#billing_plan harus mendarat di tab yang sama di v2). */
+      const withHash = window.location.hash ? `${v2Target}${window.location.hash}` : v2Target;
+      debugLog('cutover-v2-redirect', { from: canonicalPath, to: withHash });
+      goto(withHash);
       return;
     }
 

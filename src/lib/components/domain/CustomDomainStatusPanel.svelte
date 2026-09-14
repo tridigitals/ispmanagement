@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locale as i18nLocale } from 'svelte-i18n';
   import { resolveCustomDomainStatusView } from '$lib/utils/customDomainStatus';
   import CustomDomainStatusBadge from './CustomDomainStatusBadge.svelte';
   import { t } from 'svelte-i18n';
@@ -36,7 +37,9 @@
   <p class="domain-status-description">{view.description}</p>
 
   {#if verifiedAt && view.key === 'active'}
-    <div class="domain-status-meta">Terverifikasi: {new Date(verifiedAt).toLocaleString('id-ID')}</div>
+    <div class="domain-status-meta">
+          { $t('admin.settings.branding.verified_at') }: {new Date(verifiedAt).toLocaleString($i18nLocale || 'id-ID')}
+        </div>
   {/if}
 </section>
 

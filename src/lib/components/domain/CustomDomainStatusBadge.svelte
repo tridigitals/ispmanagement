@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import { resolveCustomDomainStatusView } from '$lib/utils/customDomainStatus';
 
   let {
@@ -18,9 +19,15 @@
       failureReason,
     }),
   );
+  /* Label badge dilokalkan lewat kamus; util resolve tetap murni (dipakai
+     tes + halaman superadmin). Fallback = label util kalau key hilang. */
+  const label = $derived.by(() => {
+    const v = $t(`admin.settings.branding.status_${view.key}`);
+    return typeof v === 'string' && v && !v.startsWith('admin.') ? v : view.label;
+  });
 </script>
 
-<span class="domain-status-badge {view.tone}" title={view.description}>{view.label}</span>
+<span class="domain-status-badge {view.tone}" title={view.description}>{label}</span>
 
 <style>
   .domain-status-badge {

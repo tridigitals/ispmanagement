@@ -3959,7 +3959,8 @@
       "logo_uploaded": "Logo berhasil diunggah",
       "logo_upload_failed": "Gagal mengunggah logo",
       "saved": "Pengaturan tersimpan",
-      "save_failed": "Gagal menyimpan pengaturan"
+      "save_failed": "Gagal menyimpan pengaturan",
+      "send_test_failed": "Gagal mengirim email uji"
     },
     "placeholders": {
       "custom_domain": "contoh: app.perusahaanmu.com",
@@ -3972,7 +3973,14 @@
       "custom_domain_pro_title": "Custom Domain adalah fitur Pro",
       "custom_domain_pro_desc": "Upgrade paket untuk menggunakan domain sendiri.",
       "domain_status": "Status Domain",
-      "not_configured": "Belum Dikonfigurasi"
+      "not_configured": "Belum Dikonfigurasi",
+      "logo_help": "PNG/JPG, tampil di sidebar, halaman login, dan invoice.",
+      "choose_logo": "Pilih berkas",
+      "status_active": "Aktif",
+      "status_pending": "Menunggu",
+      "status_failed": "Gagal",
+      "status_none": "Belum diatur",
+      "verified_at": "Terverifikasi"
     },
     "security": {
       "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard.",
@@ -4183,7 +4191,8 @@
       "email_smtp_encryption": "Enkripsi",
       "email_api_key": "API Key",
       "email_from_address": "Alamat Pengirim",
-      "email_from_name": "Nama Pengirim"
+      "email_from_name": "Nama Pengirim",
+      "tenant_name": "Nama tenant"
     },
     "test_email": {
       "title": "Tes Konfigurasi Email",
@@ -4763,7 +4772,9 @@
     "toast_saved": "{n} pengaturan disimpan",
     "toast_partial": "{failed} dari {total} pengaturan gagal disimpan",
     "toast_blocking": "{n} field masih perlu diperbaiki",
-    "hidden_note": "{n} pengaturan lain muncul setelah opsi terkait diaktifkan."
+    "hidden_note": "{n} pengaturan lain muncul setelah opsi terkait diaktifkan.",
+    "toast_panel_load_failed": "Panel gagal dimuat",
+    "toast_discarded": "Perubahan dibatalkan"
   },
   "storage": {
     "title": "Penyimpanan",

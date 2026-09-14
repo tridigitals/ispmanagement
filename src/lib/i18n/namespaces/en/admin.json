@@ -332,7 +332,8 @@
       "logo_uploaded": "Logo uploaded",
       "logo_upload_failed": "Failed to upload logo",
       "saved": "Settings saved",
-      "save_failed": "Failed to save settings"
+      "save_failed": "Failed to save settings",
+      "send_test_failed": "Failed to send test email"
     },
     "placeholders": {
       "custom_domain": "e.g. app.yourcompany.com",
@@ -345,7 +346,14 @@
       "custom_domain_pro_title": "Custom Domain is a Pro Feature",
       "custom_domain_pro_desc": "Upgrade your plan to use your own domain name.",
       "domain_status": "Domain Status",
-      "not_configured": "Not Configured"
+      "not_configured": "Not Configured",
+      "logo_help": "PNG/JPG, shown in the sidebar, login page, and invoices.",
+      "choose_logo": "Choose file",
+      "status_active": "Active",
+      "status_pending": "Pending",
+      "status_failed": "Failed",
+      "status_none": "Not set",
+      "verified_at": "Verified"
     },
     "security": {
       "enforce_2fa_desc": "Require all members of this organization to enable 2FA before accessing the dashboard.",
@@ -556,7 +564,8 @@
       "email_smtp_encryption": "Encryption",
       "email_api_key": "API Key",
       "email_from_address": "From Address",
-      "email_from_name": "From Name"
+      "email_from_name": "From Name",
+      "tenant_name": "Tenant name"
     },
     "test_email": {
       "title": "Test Email Configuration",
@@ -4762,7 +4771,9 @@
     "toast_saved": "{n} settings saved",
     "toast_partial": "{failed} of {total} settings failed to save",
     "toast_blocking": "{n} fields still need fixing",
-    "hidden_note": "{n} more settings appear once the related option is enabled."
+    "hidden_note": "{n} more settings appear once the related option is enabled.",
+    "toast_panel_load_failed": "Failed to load panel",
+    "toast_discarded": "Changes discarded"
   },
   "storage": {
     "title": "Storage",
