@@ -179,5 +179,6 @@
   "nothing_to_export": "Tidak ada data untuk diekspor",
   "components": {
     "save_bar": {}
-  }
+  },
+  "uploading": "Mengunggah…"
 }

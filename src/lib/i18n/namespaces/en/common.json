@@ -179,5 +179,6 @@
   "nothing_to_export": "Nothing to export",
   "components": {
     "save_bar": {}
-  }
+  },
+  "uploading": "Uploading…"
 }

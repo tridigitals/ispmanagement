@@ -3980,7 +3980,14 @@
       "status_pending": "Menunggu",
       "status_failed": "Gagal",
       "status_none": "Belum diatur",
-      "verified_at": "Terverifikasi"
+      "verified_at": "Terverifikasi",
+      "section_brand_title": "Identitas merek",
+      "section_brand_desc": "Nama dan logo yang tampil di aplikasi, halaman login, dan tagihan.",
+      "section_domain_title": "Domain kustom",
+      "section_domain_desc": "Arahkan nama domain Anda sendiri ke panel tenant ini.",
+      "preview_sidebar": "Pratinjau navigasi",
+      "preview_login": "Pratinjau halaman login",
+      "copy_failed": "Gagal menyalin ke papan klip."
     },
     "security": {
       "enforce_2fa_desc": "Wajibkan semua anggota organisasi ini mengaktifkan 2FA sebelum mengakses dashboard.",
