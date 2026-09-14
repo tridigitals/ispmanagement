@@ -927,7 +927,7 @@
             <h2 class="card-title">
               {categories[activeTab as keyof typeof categories].label}
             </h2>
-            <p class="card-subtitle">{$t('admin.settings.page_subtitle', { values: { tab: categories[activeTab as keyof typeof categories].label } }) || `Pengaturan ${categories[activeTab as keyof typeof categories].label}.`}</p>
+            <p class="card-subtitle">{$t('admin.settings.subtitle_dynamic', { values: { tab: categories[activeTab as keyof typeof categories].label } }) || `Pengaturan ${categories[activeTab as keyof typeof categories].label}.`}</p>
           </div>
 
           <div class="settings-body">

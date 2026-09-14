@@ -282,7 +282,7 @@
 
     // Cutover v2: route lama punya padanan di /v2 -> redirect. Rollback:
     // hapus blok ini (+ util legacyV2Redirect) — halaman lama tetap utuh.
-    const v2Target = v2RedirectFor(canonicalPath);
+    const v2Target = v2RedirectFor(canonicalPath, window.location.hash);
     if (v2Target) {
       debugLog('cutover-v2-redirect', { from: canonicalPath, to: v2Target });
       goto(v2Target);
