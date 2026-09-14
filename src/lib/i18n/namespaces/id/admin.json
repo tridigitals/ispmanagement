@@ -4023,6 +4023,19 @@
         "ok": "Koneksi SMTP terverifikasi",
         "failed": "Tes SMTP gagal",
         "hint": "Cek koneksi dan autentikasi tanpa mengirim email."
+      },
+      "inherit_banner": {
+        "title": "Memakai pengaturan email platform",
+        "desc": "Email belum dikonfigurasi untuk tenant ini. Email keluar dikirim lewat provider bawaan platform. Isi salah satu kolom di bawah untuk memakai nilai khusus tenant."
+      },
+      "missing_banner": {
+        "title": "Email belum dikonfigurasi",
+        "desc": "Belum ada SMTP, API key, atau webhook yang dikonfigurasi secara global maupun per tenant. Email pengingat dan verifikasi tidak akan terkirim."
+      },
+      "desc_smtp": "Koneksi langsung ke server SMTP.",
+      "desc_api": "Pengiriman via API berperforma tinggi.",
+      "origin": {
+        "inherited": "Warisan platform"
       }
     },
     "payment": {
@@ -4056,7 +4069,9 @@
           "add": "Tambah",
           "add_account": "Tambah Rekening",
           "remove_account": "Hapus Rekening"
-        }
+        },
+        "checkout_help": "Instruksi ini ditampilkan ke pelanggan saat checkout.",
+        "no_bank_accounts": "Belum ada rekening bank ditambahkan."
       },
       "installation_sla": {
         "title": "Pengingat SLA Instalasi",
@@ -4082,7 +4097,14 @@
       "duitku_title": "Gateway Pembayaran Duitku",
       "duitku_desc": "Terima pembayaran via redirect checkout Duitku.",
       "merchant_code": "Kode Merchant",
-      "api_key": "API Key"
+      "api_key": "API Key",
+      "enabled_methods": "Metode Pembayaran Aktif",
+      "load_duitku_methods": "Muat Metode Duitku",
+      "duitku_channels_help": "Pilih kanal Duitku yang bisa dipakai pelanggan saat checkout.",
+      "saved_method": "Metode tersimpan",
+      "manual_desc": "Terima pembayaran via verifikasi transfer bank langsung.",
+      "no_duitku_methods": "Merchant Duitku ini belum mengembalikan metode pembayaran apa pun.",
+      "duitku_load_failed": "Gagal memuat metode Duitku"
     },
     "categories": {
       "general": "Umum",
@@ -4101,7 +4123,14 @@
     },
     "whatsapp": {
       "title": "WhatsApp Gateway",
-      "description": "Atur gateway WhatsApp tenant ini."
+      "description": "Atur gateway WhatsApp tenant ini.",
+      "provider": {
+        "disabled_label": "Nonaktif",
+        "disabled_desc": "Jangan kirim notifikasi WhatsApp.",
+        "fonnte_desc": "Kirim via token API Fonnte.",
+        "triwax_desc": "Kirim via API Triwax cukup dengan API key."
+      },
+      "test_default_message": "Pesan tes WhatsApp dari ISP Management."
     },
     "event_notifications": {
       "title": "Notifikasi Event",
@@ -4212,7 +4241,33 @@
     "company": {
       "name_placeholder": "PT Internet Service Provider",
       "address_placeholder": "Jl. Raya No. 123, Jakarta 12345",
-      "logo_preview_alt": "Preview Logo"
+      "logo_preview_alt": "Preview Logo",
+      "logo_too_big": "Logo harus < 800KB",
+      "title": "Perusahaan & Invoice",
+      "subtitle": "Identitas perusahaan ini muncul di header invoice yang dicetak/diunduh PDF oleh pelanggan.",
+      "identity": "Identitas Perusahaan",
+      "identity_hint": "Nama dan kontak resmi yang ditampilkan pada dokumen invoice.",
+      "fields": {
+        "name": "Nama Perusahaan",
+        "address": "Alamat",
+        "phone": "Telepon",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "npwp": "NPWP",
+        "website": "Website"
+      },
+      "logo": "Logo Invoice",
+      "logo_hint": "Logo muncul di header invoice. Disarankan PNG transparan, ukuran < 800KB.",
+      "logo_empty": "Belum ada logo",
+      "logo_pick": "Pilih Logo",
+      "logo_clear": "Hapus",
+      "logo_url": "Atau URL logo eksternal",
+      "invoice_doc": "Dokumen Invoice",
+      "invoice_doc_hint": "Catatan kaki dan teks pelengkap pada PDF invoice.",
+      "footer_note": "Catatan Kaki Invoice",
+      "footer_note_help": "Muncul di bagian bawah invoice sebagai pesan terima kasih atau instruksi tambahan.",
+      "preview": "Pratinjau Invoice",
+      "preview_hint": "Pratinjau menggunakan data contoh. Perubahan disimpan saat klik \"Save Changes\" pada toolbar atas."
     },
     "service_tab": {
       "subtitle": "Pengaturan global untuk billing dan lifecycle layanan.",
@@ -4225,7 +4280,63 @@
       "invoice_status": "Status tagihan pelanggan",
       "view_automation_log": "Lihat log automation",
       "scheduler_history": "Riwayat scheduler billing",
-      "suspend_method": "Metode suspend"
+      "suspend_method": "Metode suspend",
+      "suspend_fixed_day_preview": "Tanggal tetap {day} setiap bulan",
+      "suspend_grace_preview": "Tenggang {days} hari setelah jatuh tempo",
+      "pppoe_isolation_preview": "Mengikuti pool isolir di service/router",
+      "pppoe_disable_preview": "Secret PPPoE dinonaktifkan",
+      "invoice_active_preview": "Aktif, dibuat H-{days}",
+      "disabled": "Nonaktif",
+      "auto_resume_on_payment": "Otomatis aktif setelah pembayaran",
+      "auto_resume_manual": "Aktifkan manual",
+      "reminder_preview": "{before} sebelum, {after} sesudah jatuh tempo",
+      "no_runs_recorded": "Belum ada run tercatat",
+      "scheduler_help_no_runs": "Jalankan generate invoice manual sekali untuk memastikan scheduler sudah aktif.",
+      "scheduler_help_updated": "Terakhir diperbarui saat generate invoice pelanggan berjalan.",
+      "reminder_none": "Belum ada",
+      "reminder_count_one": "1 pengingat",
+      "reminder_count": "{count} pengingat",
+      "active_policy": "Kebijakan aktif",
+      "suspend_fixed_day_help": "Gunakan 1-28 agar selalu valid di semua bulan.",
+      "pppoe_action_title": "Aksi PPPoE saat suspend",
+      "pppoe_disable_title": "Disable PPP",
+      "pppoe_disable_desc": "Secret PPPoE dinonaktifkan dan sesi aktif diputus.",
+      "pppoe_isolation_title": "Pool Isolir",
+      "pppoe_isolation_desc": "PPPoE tetap aktif, tapi dipindah ke pool isolir lalu reconnect otomatis.",
+      "active_action": "Aksi aktif",
+      "isolation_pool_help": "Pool isolir diatur di mapping service/router.",
+      "summary": "Ringkasan",
+      "preset_reminder_count": "{count} pengingat",
+      "before_due": "Sebelum jatuh tempo",
+      "delete_label": "hapus",
+      "after_due": "Sesudah jatuh tempo",
+      "add_rule_manual": "Tambah aturan manual",
+      "reminder_timing_label": "Waktu reminder",
+      "days_suffix": "hari",
+      "add_reminder": "Tambah pengingat",
+      "quick_add_1_before": "+ 1 hari sebelum",
+      "quick_add_3_before": "+ 3 hari sebelum",
+      "quick_add_1_after": "+ 1 hari sesudah",
+      "quick_add_3_after": "+ 3 hari sesudah",
+      "technical_format_saved": "Format teknis tersimpan",
+      "technical_format_help": "Format teknis tetap disimpan sebagai kode H-."
+    },
+    "service": {
+      "auto_invoice_title": "Invoice Otomatis",
+      "auto_suspend_title": "Suspend Otomatis",
+      "auto_suspend_enabled_label": "Aktifkan suspend otomatis",
+      "auto_suspend_mode_label": "Metode suspend",
+      "auto_suspend_mode_grace_short": "Masa Tenggang",
+      "auto_suspend_mode_grace": "Suspend beberapa hari setelah jatuh tempo",
+      "auto_suspend_mode_fixed_short": "Tanggal Tetap",
+      "auto_suspend_mode_fixed_day": "Suspend di tanggal yang sama setiap bulan",
+      "auto_suspend_grace_days_label": "Hari tenggang",
+      "auto_suspend_fixed_day_label": "Tanggal suspend tetap (1-28)",
+      "auto_resume_title": "Aktifkan Kembali Otomatis",
+      "auto_resume_on_payment_label": "Aktifkan kembali layanan yang disuspend setelah pembayaran",
+      "reminder_title": "Pengingat",
+      "reminder_enabled_label": "Aktifkan pengingat billing",
+      "reminder_schedule_label": "Jadwal pengingat"
     }
   },
   "team": {

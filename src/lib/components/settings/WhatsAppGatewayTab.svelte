@@ -25,35 +25,40 @@
     description?: string;
   } = $props();
 
-  const providerOptions: Array<{
-    value: WhatsAppGatewayProvider;
-    label: string;
-    icon: string;
-    desc: string;
-  }> = [
-    {
-      value: 'disabled',
-      label: 'Disabled',
-      icon: 'circle-off',
-      desc: 'Do not send WhatsApp notifications.',
-    },
-    {
-      value: 'fonnte',
-      label: 'Fonnte',
-      icon: 'message-circle',
-      desc: 'Use Fonnte API token delivery.',
-    },
-    {
-      value: 'triwax',
-      label: 'Triwax',
-      icon: 'send',
-      desc: 'Use Triwax API with a simple API key configuration.',
-    },
-  ];
-
+  /* Label merek (Fonnte/Triwax) tetap; deskripsi & label 'Disabled' ikut locale. */
+  const tr = $derived($t);
+  function tt(key: string, fallback: string) {
+    const v = tr(key);
+    return typeof v === 'string' && v && v !== key ? v : fallback;
+  }
+  const providerOptions = $derived(
+    [
+      {
+        value: 'disabled' as WhatsAppGatewayProvider,
+        label: tt('admin.settings.whatsapp.provider.disabled_label', 'Nonaktif'),
+        icon: 'circle-off',
+        desc: tt('admin.settings.whatsapp.provider.disabled_desc', 'Do not send WhatsApp notifications.'),
+      },
+      {
+        value: 'fonnte' as WhatsAppGatewayProvider,
+        label: 'Fonnte',
+        icon: 'message-circle',
+        desc: tt('admin.settings.whatsapp.provider.fonnte_desc', 'Use Fonnte API token delivery.'),
+      },
+      {
+        value: 'triwax' as WhatsAppGatewayProvider,
+        label: 'Triwax',
+        icon: 'send',
+        desc: tt('admin.settings.whatsapp.provider.triwax_desc', 'Use Triwax API with a simple API key configuration.'),
+      },
+    ],
+  );
   let events = $state<WhatsAppEventDefinition[]>([]);
   let testPhone = $state('');
-  let testMessage = $state('Test WhatsApp message from ISP Management.');
+  let testMessage = $state('');
+  $effect(() => {
+    if (!testMessage) testMessage = tt('admin.settings.whatsapp.test_default_message', 'Test WhatsApp message from ISP Management.');
+  });
   let testEventCode = $state('');
   let sendingTest = $state(false);
   let testResult = $state('');
@@ -96,7 +101,7 @@
     try {
       const result = await api.whatsapp.sendTest({
         phone: testPhone.trim(),
-        message: testMessage.trim() || 'Test WhatsApp message from ISP Management.',
+        message: testMessage.trim() || tt('admin.settings.whatsapp.test_default_message', 'Test WhatsApp message from ISP Management.'),
         eventCode: testEventCode || undefined,
       });
       if (result.ok) {

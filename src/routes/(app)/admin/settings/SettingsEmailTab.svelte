@@ -473,13 +473,13 @@
   }
 
   .provider-card:hover {
-    border-color: rgba(99, 102, 241, 0.28);
-    background: rgba(99, 102, 241, 0.06);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
     transform: translateY(-1px);
   }
 
   .provider-card.selected {
-    border-color: rgba(99, 102, 241, 0.42);
+    border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
     background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
   }
@@ -489,7 +489,7 @@
   }
 
   :global([data-theme='light']) .provider-card:hover {
-    background: rgba(99, 102, 241, 0.06);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
   }
 
   :global([data-theme='light']) .provider-card.selected {
@@ -511,9 +511,9 @@
   }
 
   .selected .p-icon {
-    background: rgba(99, 102, 241, 0.16);
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   }
 
   .p-info {
@@ -545,7 +545,7 @@
   }
 
   .selected .p-check {
-    color: rgba(99, 102, 241, 0.9);
+    color: var(--color-primary);
   }
 
   .config-panel {
@@ -664,7 +664,7 @@
 
   input:checked + .slider {
     background-color: var(--color-primary);
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
   }
 
   input:checked + .slider:before {

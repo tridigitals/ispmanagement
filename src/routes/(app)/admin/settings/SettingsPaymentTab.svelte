@@ -53,10 +53,10 @@
     try {
       duitkuMethods = await api.payment.listDuitkuPaymentMethods(10000);
       if (!duitkuMethods.length) {
-        toast.info('No Duitku payment methods returned for this merchant.');
+        toast.info(tt('admin.settings.payment.no_duitku_methods', 'No Duitku payment methods returned for this merchant.'));
       }
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to load Duitku payment methods');
+      toast.error(error?.message || tt('admin.settings.payment.duitku_load_failed', 'Failed to load Duitku payment methods'));
     } finally {
       loadingDuitkuMethods = false;
     }
@@ -470,7 +470,7 @@
 
   input:checked + .slider {
     background-color: var(--color-primary);
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
   }
 
   input:checked + .slider:before {
@@ -598,8 +598,8 @@
 
   .form-textarea:focus {
     outline: none;
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.14);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 14%, transparent);
   }
 
   .bank-accounts-manager {
@@ -671,7 +671,7 @@
   }
 
   .bank-card-item:hover {
-    border-color: rgba(99, 102, 241, 0.25);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
   }
@@ -740,9 +740,9 @@
   }
 
   .btn-icon:hover {
-    background: rgba(99, 102, 241, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   }
 
   .btn-icon.delete:hover {
@@ -767,9 +767,9 @@
   }
 
   .add-bank-card:hover {
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
     color: var(--text-primary);
-    background: rgba(99, 102, 241, 0.06);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
     transform: translateY(-1px);
   }
 

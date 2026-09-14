@@ -145,7 +145,8 @@
     "elsewhere": "Includes changes in {parts}. All of them will be saved.",
     "others_suffix": " +{n} more",
     "cancel": "Discard",
-    "save": "Save"
+    "save": "Save",
+    "unsaved_field": "Unsaved"
   },
   "topbar": {
     "search_placeholder": "Search customers, invoices, PPPoE…"

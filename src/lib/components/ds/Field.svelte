@@ -19,6 +19,7 @@
   "true" vs true di halaman lama.
 -->
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import Icon from './Icon.svelte';
 
   export type FieldType = 'text' | 'number' | 'password' | 'email' | 'textarea' | 'select' | 'toggle';
@@ -98,8 +99,8 @@
            lebih dari isinya sendiri. -->
       <span
         class="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-500"
-        title="Belum disimpan"
-        aria-label="Belum disimpan"
+        title={ $t('components.save_bar.unsaved_field') }
+        aria-label={ $t('components.save_bar.unsaved_field') }
       ></span>
     {/if}
   </div>

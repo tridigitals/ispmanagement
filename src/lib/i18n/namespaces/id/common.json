@@ -176,5 +176,8 @@
   "cards": "Kartu",
   "table": "Tabel",
   "redirecting": "Mengalihkan...",
-  "nothing_to_export": "Tidak ada data untuk diekspor"
+  "nothing_to_export": "Tidak ada data untuk diekspor",
+  "components": {
+    "save_bar": {}
+  }
 }

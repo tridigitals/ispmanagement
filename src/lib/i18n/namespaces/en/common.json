@@ -176,5 +176,8 @@
   "cards": "Cards",
   "table": "Table",
   "redirecting": "Redirecting...",
-  "nothing_to_export": "Nothing to export"
+  "nothing_to_export": "Nothing to export",
+  "components": {
+    "save_bar": {}
+  }
 }

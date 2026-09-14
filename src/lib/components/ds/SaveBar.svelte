@@ -43,7 +43,7 @@
 
 {#if count > 0}
   <div
-    class="sticky bottom-0 z-20 -mx-5 mt-6 border-t border-ink-200 bg-white/95 px-5 py-3 backdrop-blur lg:-mx-7 lg:px-7"
+    class="sticky bottom-0 z-20 -mx-5 mt-6 border-t border-ink-200 bg-white/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:-mx-7 lg:px-7"
     role="region"
     aria-label={ $t('components.save_bar.unsaved_aria') }
   >

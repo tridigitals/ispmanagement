@@ -1652,18 +1652,18 @@
     transition: all 0.2s;
   }
   .nav-item:hover {
-    background: rgba(99, 102, 241, 0.08);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
     color: var(--text-primary);
   }
   .nav-item.active {
-    background: rgba(99, 102, 241, 0.14);
-    border-color: rgba(99, 102, 241, 0.35);
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
     color: var(--text-primary);
   }
 
   :global([data-theme='light']) .nav-item.active {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.25);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
   }
 
   .card {
@@ -1722,7 +1722,7 @@
   }
 
   .settings-list .setting-item:hover {
-    border-color: rgba(99, 102, 241, 0.25);
+    border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
   }
 
   .setting-item-row {
@@ -1802,7 +1802,7 @@
   }
 
   .upgrade-banner {
-    background: rgba(99, 102, 241, 0.08);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
     border: 1px solid var(--color-primary-subtle);
     border-radius: var(--radius-lg);
     padding: 1rem;
@@ -1950,7 +1950,7 @@
 
   input:checked + .slider {
     background-color: var(--color-primary);
-    border-color: rgba(99, 102, 241, 0.4);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
   }
 
   input:checked + .slider:before {
@@ -1986,13 +1986,13 @@
     position: relative;
   }
   .provider-card:hover {
-    border-color: rgba(99, 102, 241, 0.28);
-    background: rgba(99, 102, 241, 0.06);
+    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
     transform: translateY(-1px);
   }
   .provider-card.selected {
-    border-color: rgba(99, 102, 241, 0.42);
-    background: rgba(99, 102, 241, 0.12);
+    border-color: color-mix(in srgb, var(--color-primary) 42%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
     box-shadow: var(--shadow-sm);
   }
 
@@ -2001,11 +2001,11 @@
   }
 
   :global([data-theme='light']) .provider-card:hover {
-    background: rgba(99, 102, 241, 0.06);
+    background: color-mix(in srgb, var(--color-primary) 6%, transparent);
   }
 
   :global([data-theme='light']) .provider-card.selected {
-    background: rgba(99, 102, 241, 0.1);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
     box-shadow: var(--shadow-sm);
   }
 
@@ -2022,9 +2022,9 @@
     border: 1px solid var(--border-color);
   }
   .selected .p-icon {
-    background: rgba(99, 102, 241, 0.16);
+    background: color-mix(in srgb, var(--color-primary) 16%, transparent);
     color: var(--text-primary);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
   }
 
   .p-info {
@@ -2054,7 +2054,7 @@
   }
 
   .selected .p-check {
-    color: rgba(99, 102, 241, 0.9);
+    color: var(--color-primary);
   }
 
   .config-panel {

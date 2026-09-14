@@ -396,6 +396,19 @@
         "ok": "SMTP connection verified",
         "failed": "SMTP test failed",
         "hint": "Checks connectivity and auth without sending an email."
+      },
+      "inherit_banner": {
+        "title": "Using platform-wide email settings",
+        "desc": "Email is not yet configured for this tenant. Outgoing emails are sent with the platform default provider. Override any field below to use a tenant-specific value."
+      },
+      "missing_banner": {
+        "title": "Email is not configured",
+        "desc": "No SMTP, API key, or webhook is configured globally or for this tenant. Reminder and verification emails will not be delivered."
+      },
+      "desc_smtp": "Direct SMTP server connection.",
+      "desc_api": "High-performance API delivery.",
+      "origin": {
+        "inherited": "Inherited"
       }
     },
     "payment": {
@@ -429,7 +442,9 @@
           "add": "Add",
           "add_account": "Add Account",
           "remove_account": "Remove Account"
-        }
+        },
+        "checkout_help": "These instructions will be shown to the user during checkout.",
+        "no_bank_accounts": "No bank accounts added yet."
       },
       "installation_sla": {
         "title": "Installation SLA Reminders",
@@ -455,7 +470,14 @@
       "duitku_title": "Duitku Payment Gateway",
       "duitku_desc": "Accept payments via Duitku checkout redirect.",
       "merchant_code": "Merchant Code",
-      "api_key": "API Key"
+      "api_key": "API Key",
+      "enabled_methods": "Enabled Payment Methods",
+      "load_duitku_methods": "Load Duitku Methods",
+      "duitku_channels_help": "Select which Duitku channels customers can choose during checkout.",
+      "saved_method": "Saved method",
+      "manual_desc": "Accept payments via direct bank transfer verification.",
+      "no_duitku_methods": "No Duitku payment methods returned for this merchant.",
+      "duitku_load_failed": "Failed to load Duitku payment methods"
     },
     "categories": {
       "general": "General",
@@ -474,7 +496,14 @@
     },
     "whatsapp": {
       "title": "WhatsApp Gateway",
-      "description": "Configure this tenant WhatsApp gateway."
+      "description": "Configure this tenant WhatsApp gateway.",
+      "provider": {
+        "disabled_label": "Disabled",
+        "disabled_desc": "Do not send WhatsApp notifications.",
+        "fonnte_desc": "Use Fonnte API token delivery.",
+        "triwax_desc": "Use Triwax API with a simple API key configuration."
+      },
+      "test_default_message": "Test WhatsApp message from ISP Management."
     },
     "event_notifications": {
       "title": "Event Notifications",
@@ -585,7 +614,33 @@
     "company": {
       "name_placeholder": "PT Internet Service Provider",
       "address_placeholder": "Jl. Raya No. 123, Jakarta 12345",
-      "logo_preview_alt": "Logo preview"
+      "logo_preview_alt": "Logo preview",
+      "logo_too_big": "Logo must be < 800KB",
+      "title": "Company & Invoice",
+      "subtitle": "This company identity appears on invoice headers printed/downloaded as PDF by customers.",
+      "identity": "Company Identity",
+      "identity_hint": "Official name and contacts shown on invoice documents.",
+      "fields": {
+        "name": "Company Name",
+        "address": "Address",
+        "phone": "Phone",
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "npwp": "Tax ID (NPWP)",
+        "website": "Website"
+      },
+      "logo": "Invoice Logo",
+      "logo_hint": "Logo appears in the invoice header. Transparent PNG recommended, < 800KB.",
+      "logo_empty": "No logo yet",
+      "logo_pick": "Choose Logo",
+      "logo_clear": "Remove",
+      "logo_url": "Or external logo URL",
+      "invoice_doc": "Invoice Document",
+      "invoice_doc_hint": "Footer note and supporting text on the invoice PDF.",
+      "footer_note": "Invoice Footer Note",
+      "footer_note_help": "Appears at the bottom of the invoice as a thank-you or extra instruction.",
+      "preview": "Invoice Preview",
+      "preview_hint": "Preview uses sample data. Changes are saved when you click \"Save Changes\" in the top toolbar."
     },
     "service_tab": {
       "subtitle": "Global settings for billing and service lifecycle.",
@@ -598,7 +653,63 @@
       "invoice_status": "Customer invoice status",
       "view_automation_log": "View automation log",
       "scheduler_history": "Billing scheduler history",
-      "suspend_method": "Suspend method"
+      "suspend_method": "Suspend method",
+      "suspend_fixed_day_preview": "Fixed day {day} every month",
+      "suspend_grace_preview": "Grace of {days} days after due date",
+      "pppoe_isolation_preview": "Follows the isolation pool on service/router",
+      "pppoe_disable_preview": "PPPoE secret disabled",
+      "invoice_active_preview": "Active, generated D-{days}",
+      "disabled": "Disabled",
+      "auto_resume_on_payment": "Auto-enable after payment",
+      "auto_resume_manual": "Enable manually",
+      "reminder_preview": "{before} before, {after} after due date",
+      "no_runs_recorded": "No runs recorded yet",
+      "scheduler_help_no_runs": "Run manual invoice generation once to confirm the scheduler is active.",
+      "scheduler_help_updated": "Last updated when the customer invoice generation ran.",
+      "reminder_none": "None yet",
+      "reminder_count_one": "1 reminder",
+      "reminder_count": "{count} reminders",
+      "active_policy": "Active policy",
+      "suspend_fixed_day_help": "Use 1-28 so it stays valid in every month.",
+      "pppoe_action_title": "PPPoE action on suspension",
+      "pppoe_disable_title": "Disable PPP",
+      "pppoe_disable_desc": "PPPoE secret is disabled and active sessions are dropped.",
+      "pppoe_isolation_title": "Isolation Pool",
+      "pppoe_isolation_desc": "PPPoE stays active but moves to the isolation pool with an automatic reconnect.",
+      "active_action": "Active action",
+      "isolation_pool_help": "Isolation pool is configured in the service/router mapping.",
+      "summary": "Summary",
+      "preset_reminder_count": "{count} reminders",
+      "before_due": "Before due date",
+      "delete_label": "delete",
+      "after_due": "After due date",
+      "add_rule_manual": "Add manual rule",
+      "reminder_timing_label": "Reminder timing",
+      "days_suffix": "days",
+      "add_reminder": "Add reminder",
+      "quick_add_1_before": "+ 1 day before",
+      "quick_add_3_before": "+ 3 days before",
+      "quick_add_1_after": "+ 1 day after",
+      "quick_add_3_after": "+ 3 days after",
+      "technical_format_saved": "Technical format saved",
+      "technical_format_help": "The technical format is stored as D- code."
+    },
+    "service": {
+      "auto_invoice_title": "Automatic Invoices",
+      "auto_suspend_title": "Automatic Suspension",
+      "auto_suspend_enabled_label": "Enable automatic suspension",
+      "auto_suspend_mode_label": "Suspension method",
+      "auto_suspend_mode_grace_short": "Grace Period",
+      "auto_suspend_mode_grace": "Suspend a few days after the due date",
+      "auto_suspend_mode_fixed_short": "Fixed Day",
+      "auto_suspend_mode_fixed_day": "Suspend on the same day every month",
+      "auto_suspend_grace_days_label": "Grace days",
+      "auto_suspend_fixed_day_label": "Fixed suspension day (1-28)",
+      "auto_resume_title": "Automatic Re-enable",
+      "auto_resume_on_payment_label": "Re-enable suspended services after payment",
+      "reminder_title": "Reminders",
+      "reminder_enabled_label": "Enable billing reminders",
+      "reminder_schedule_label": "Reminder schedule"
     }
   },
   "customers": {
