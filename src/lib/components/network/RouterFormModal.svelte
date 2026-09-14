@@ -2,7 +2,9 @@
   import { onDestroy, tick } from 'svelte';
   import { t } from 'svelte-i18n';
   import Modal from '$lib/components/ui/Modal.svelte';
-  import Icon from '$lib/components/ui/Icon.svelte';
+  import Button from '$lib/components/ds/Button.svelte';
+  import Field from '$lib/components/ds/Field.svelte';
+
   import DateTimeLocalInput from '$lib/components/ui/DateTimeLocalInput.svelte';
   import MapCanvasShell from '$lib/components/network/MapCanvasShell.svelte';
   import 'maplibre-gl/dist/maplibre-gl.css';
@@ -239,7 +241,7 @@
   });
 </script>
 
-<Modal bind:show title={modalTitle} width="520px" onclose={() => (show = false)}>
+<Modal bind:show title={modalTitle} width="560px" onclose={() => (show = false)}>
   <form
     class="form"
     onsubmit={(e) => {
@@ -247,78 +249,100 @@
       onSubmit();
     }}
   >
-    <label>
-      <span>{$t('admin.network.routers.form.name')}</span>
-      <input bind:value={formName} placeholder="e.g. POP Router 1" />
-    </label>
-    <label>
-      <span>{$t('admin.network.routers.form.host')}</span>
-      <input bind:value={formHost} placeholder="192.168.88.1" />
-    </label>
-
+    <Field
+      stacked
+      id="rt-name"
+      label={$t('admin.network.routers.form.name')}
+      value={formName}
+      placeholder="POP Router 1"
+      onchange={(v) => (formName = v)}
+    />
     <div class="grid2">
-      <label>
-        <span>{$t('network.map.latitude')}</span>
-        <input
-          type="number"
-          bind:value={formLatitude}
-          step="any"
-          min="-90"
-          max="90"
-          placeholder="-6.200000"
-        />
-      </label>
-      <label>
-        <span>{$t('network.map.longitude')}</span>
-        <input
-          type="number"
-          bind:value={formLongitude}
-          step="any"
-          min="-180"
-          max="180"
-          placeholder="106.816666"
-        />
-      </label>
-    </div>
-
-    <div class="coord-actions">
-      <button class="btn ghost" type="button" onclick={openMapPicker}>
-        <Icon name="map-pin" size={16} />
-        {$t('network.router.pick_location')}
-      </button>
-    </div>
-
-    <div class="grid2">
-      <label>
-        <span>{$t('admin.network.routers.form.port')}</span>
-        <input type="number" bind:value={formPort} min="1" max="65535" />
-      </label>
-      <label>
-        <span>{$t('admin.network.routers.form.username')}</span>
-        <input bind:value={formUsername} placeholder="admin" />
-      </label>
-    </div>
-
-    <label>
-      <span>{$t('admin.network.routers.form.password')}</span>
-      <input
-        type="password"
-        bind:value={formPassword}
-        placeholder={editing ? 'Leave blank to keep current password' : ''}
+      <Field
+        stacked
+        id="rt-host"
+        label={$t('admin.network.routers.form.host')}
+        value={formHost}
+        placeholder="192.168.88.1"
+        onchange={(v) => (formHost = v)}
       />
-    </label>
+      <Field
+        stacked
+        id="rt-port"
+        label={$t('admin.network.routers.form.port')}
+        value={String(formPort)}
+        type="number"
+        min={1}
+        max={65535}
+        onchange={(v) => (formPort = Number(v) || 0)}
+      />
+    </div>
 
-    <label class="check">
-      <input type="checkbox" bind:checked={formEnabled} />
-      <span>{$t('admin.network.routers.form.enabled')}</span>
-    </label>
+    <Field
+      stacked
+      id="rt-user"
+      label={$t('admin.network.routers.form.username')}
+      value={formUsername}
+      placeholder="admin"
+      onchange={(v) => (formUsername = v)}
+    />
+    <Field
+      stacked
+      id="rt-pass"
+      label={$t('admin.network.routers.form.password')}
+      value={formPassword}
+      type="password"
+      placeholder={editing ? $t('admin.network.routers.form.password_keep') : ''}
+      help={editing ? undefined : $t('admin.network.routers.form.password_help')}
+      onchange={(v) => (formPassword = v)}
+    />
+
+    <div class="grid2">
+      <Field
+        stacked
+        id="rt-lat"
+        label={$t('network.map.latitude')}
+        value={formLatitude}
+        type="number"
+        placeholder="-6.200000"
+        onchange={(v) => (formLatitude = v)}
+      />
+      <Field
+        stacked
+        id="rt-lng"
+        label={$t('network.map.longitude')}
+        value={formLongitude}
+        type="number"
+        placeholder="106.816666"
+        onchange={(v) => (formLongitude = v)}
+      />
+    </div>
+    <div class="coord-actions">
+      <Button variant="secondary" size="sm" icon="pin" type="button" onclick={openMapPicker}>
+        {$t('network.router.pick_location')}
+      </Button>
+    </div>
+
+    <Field
+      stacked
+      id="rt-enabled"
+      label={$t('admin.network.routers.form.enabled')}
+      value={formEnabled ? 'true' : 'false'}
+      type="toggle"
+      onchange={(v) => (formEnabled = v === 'true')}
+    />
 
     <div class="divider"></div>
 
-    <label class="check">
-      <input type="checkbox" bind:checked={formMaintenanceEnabled} />
-      <span>{$t('admin.network.routers.form.maintenance')}</span>
-    </label>
+    <Field
+      stacked
+      id="rt-maint"
+      label={$t('admin.network.routers.form.maintenance')}
+      value={formMaintenanceEnabled ? 'true' : 'false'}
+      type="toggle"
+      help={$t('admin.network.routers.form.maintenance_help')}
+      onchange={(v) => (formMaintenanceEnabled = v === 'true')}
+    />
 
     {#if formMaintenanceEnabled}
       <DateTimeLocalInput
@@ -326,20 +350,21 @@
         bind:value={formMaintenanceUntilLocal}
         placeholder="YYYY-MM-DD HH:mm"
       />
-      <label>
-        <span>{$t('admin.network.routers.form.maintenance_reason')}</span>
-        <input bind:value={formMaintenanceReason} placeholder="e.g. Upgrade firmware" />
-      </label>
+      <Field
+        stacked
+        id="rt-maint-reason"
+        label={$t('admin.network.routers.form.maintenance_reason')}
+        value={formMaintenanceReason}
+        placeholder={$t('admin.network.routers.form.maintenance_reason_ph')}
+        onchange={(v) => (formMaintenanceReason = v)}
+      />
     {/if}
 
     <div class="modal-actions">
-      <button class="btn ghost" type="button" onclick={() => (show = false)}>
+      <Button variant="ghost" type="button" onclick={() => (show = false)}>
         {$t('common.cancel')}
-      </button>
-      <button class="btn" type="submit">
-        <Icon name="save" size={16} />
-        {$t('common.save')}
-      </button>
+      </Button>
+      <Button variant="primary" type="submit" icon="check">{$t('common.save')}</Button>
     </div>
   </form>
 </Modal>
@@ -364,35 +389,15 @@
       height="min(58vh, 520px)"
     />
     <div class="modal-actions">
-      <button class="btn ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel')}</button>
-      <button class="btn" type="button" onclick={applyPickedCoordinates}>
-        <Icon name="check" size={16} />
+      <Button variant="ghost" type="button" onclick={closeMapPicker}>{$t('common.cancel')}</Button>
+      <Button variant="primary" type="button" icon="check" onclick={applyPickedCoordinates}>
         {$t('network.router.use_this_point')}
-      </button>
+      </Button>
     </div>
   </div>
 </Modal>
 
 <style>
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--color-primary);
-    color: white;
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.12s ease, filter 0.12s ease;
-  }
-
-  .btn.ghost {
-    background: transparent;
-    color: var(--text-primary);
-  }
-
   .form {
     display: flex;
     flex-direction: column;
@@ -410,40 +415,10 @@
     justify-content: flex-end;
   }
 
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    color: var(--text-secondary);
-    font-weight: 700;
-  }
-
-  input[type='password'],
-  input[type='number'],
-  input {
-    background: var(--bg-input, color-mix(in srgb, var(--bg-card), transparent 8%));
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 10px 12px;
-    color: var(--text-primary);
-    outline: none;
-  }
-
-  input:focus {
-    border-color: rgba(99, 102, 241, 0.55);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
-  }
-
   .grid2 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-  }
-
-  .check {
-    flex-direction: row;
-    align-items: center;
-    gap: 10px;
   }
 
   .modal-actions {

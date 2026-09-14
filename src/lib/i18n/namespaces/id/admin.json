@@ -1953,7 +1953,11 @@
         "enabled": "Aktif",
         "maintenance": "Maintenance (mute alert)",
         "maintenance_until": "Maintenance sampai",
-        "maintenance_reason": "Alasan (opsional)"
+        "maintenance_reason": "Alasan (opsional)",
+        "password_keep": "Kosongkan untuk mempertahankan password saat ini.",
+        "password_help": "Password RouterOS untuk API.",
+        "maintenance_help": "Selama maintenance, alarm router ini diredam.",
+        "maintenance_reason_ph": "mis. Upgrade firmware"
       },
       "toasts": {
         "created": "Router berhasil dibuat",

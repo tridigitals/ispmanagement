@@ -177,6 +177,11 @@
     --bg-card: var(--color-ink-0);
     --bg-app: var(--color-ink-50);
     --bg-tertiary: var(--color-ink-50);
+    /* --bg-input didefinisikan di :root sbg var(--bg-tertiary) LATAR gelap —
+       substitusi var terjadi di elemen deklarasi, jadi harus diulang di sini;
+       tanpa ini input dialog legacy (router/ppp/ip-pool) hitam di atas kartu
+       putih (laporan Tri 2026-09-11, modal Tambah Router). */
+    --bg-input: var(--color-ink-50);
     --bg-hover: var(--color-ink-100);
     --bg-active: var(--color-ink-200);
     --border-input: var(--color-ink-200);

@@ -2226,7 +2226,11 @@
         "enabled": "Enabled",
         "maintenance": "Maintenance (mute alerts)",
         "maintenance_until": "Maintenance until",
-        "maintenance_reason": "Reason (optional)"
+        "maintenance_reason": "Reason (optional)",
+        "password_keep": "Leave blank to keep the current password.",
+        "password_help": "RouterOS password for the API.",
+        "maintenance_help": "Alerts for this router are muted during maintenance.",
+        "maintenance_reason_ph": "e.g. firmware upgrade"
       },
       "toasts": {
         "created": "Router created",
