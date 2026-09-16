@@ -54,11 +54,17 @@ export async function searchGlobalTopbar(
   );
 
   const allItems = settled.flatMap((entry) => entry.items);
+  /* Urutan grup = urutan provider, TAPI grup yang muncul dari item dan tidak
+     ada di daftar provider aktif tetap dibawa. Case nyata: user superadmin di
+     scope admin — provider 'invoices' me-mapping groupKey-nya sendiri ke
+     'superadmin-invoices' (label khusus), jadi tanpa guard ini seluruh hasil
+     invoice hilang senyap dari panel pencarian (laporan Tri 2026-09-14). */
+  const order = enabledProviders.map((provider) => provider.key);
+  for (const item of allItems) {
+    if (!order.includes(item.groupKey)) order.push(item.groupKey);
+  }
   return {
     query,
-    groups: groupGlobalSearchResults(
-      allItems,
-      enabledProviders.map((provider) => provider.key),
-    ),
+    groups: groupGlobalSearchResults(allItems, order),
   };
 }

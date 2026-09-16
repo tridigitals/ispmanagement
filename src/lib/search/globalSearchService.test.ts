@@ -126,4 +126,34 @@ describe('searchGlobalTopbar', () => {
     expect(result.groups).toEqual([]);
     expect(shortQueryProviderSearch).not.toHaveBeenCalled();
   });
+
+  it('keeps results whose groupKey differs from the provider key (superadmin mapping)', async () => {
+    /* Regresi 2026-09-14: user superadmin di shell admin kehilangan SEMUA
+       hasil invoice secara senyap — provider 'invoices' me-mapping groupKey
+       itemnya sendiri ke 'superadmin-invoices', sementara urutan grup dibangun
+       dari key provider saja, jadi grup asing dibuang groupGlobalSearchResults. */
+    const providers: GlobalSearchProvider[] = [
+      {
+        key: 'invoices',
+        label: 'Invoices',
+        isEnabled: () => true,
+        search: vi.fn(async () => [
+          {
+            id: 'invoice-1',
+            kind: 'invoice' as const,
+            title: 'INV-001',
+            subtitle: 'paid',
+            href: '/admin/invoices/invoice-1',
+            groupKey: 'superadmin-invoices',
+            groupLabel: 'Superadmin invoices',
+          },
+        ]),
+      },
+    ];
+
+    const result = await searchGlobalTopbar('paid', context, providers);
+
+    expect(result.groups.map((g) => g.key)).toEqual(['superadmin-invoices']);
+    expect(result.groups[0]?.items[0]?.title).toBe('INV-001');
+  });
 });

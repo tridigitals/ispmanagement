@@ -43,6 +43,9 @@ function mapInvoiceResult(
   invoice: Invoice,
   context: GlobalSearchProviderContext,
   href: string,
+  group: { key: string; label: string } = context.isSuperAdmin
+    ? { key: 'superadmin-invoices', label: 'Superadmin invoices' }
+    : { key: 'invoices', label: 'Invoices' },
 ): GlobalSearchResult {
   return {
     id: invoice.id,
@@ -50,8 +53,11 @@ function mapInvoiceResult(
     title: invoice.invoice_number,
     subtitle: `${invoice.status} • ${invoice.description || invoice.due_date}`,
     href,
-    groupKey: context.isSuperAdmin ? 'superadmin-invoices' : 'invoices',
-    groupLabel: context.isSuperAdmin ? 'Superadmin invoices' : 'Invoices',
+    /* Grup eksplisit dari pemanggil: dulu peran user yang menentukan, salah
+       di shell admin — superadmin melihat tagihan tenant-nya berlabel
+       'Superadmin invoices'. Provider tenant kini mem-pass 'Invoices' tetap. */
+    groupKey: group.key,
+    groupLabel: group.label,
   };
 }
 
@@ -120,8 +126,17 @@ export function getGlobalSearchProviders(): GlobalSearchProvider[] {
         (context.can('read', 'billing') || context.can('manage', 'billing')),
       minQueryLength: 2,
       search: async (query, context) => {
-        const rows = await getCachedProviderValue('invoices:list', () => payment.listInvoices());
-        return rows
+        /* listInvoices() = tagihan tenant (plan:...) yang TIDAK bisa dibuka
+           halaman detail invoice (guard pkgsub:) — hasil pencarian selalu
+           "Gagal memuat invoice". Yang dicari admin di tab Tagihan adalah
+           tagihan langganan pelanggan, jadi pakai list_customer_package_
+           invoices (endpoint yang sama dengan halaman daftar). Server belum
+           punya filter teks, jadi tarik satu halaman besar lalu saring di
+           klien. Cache 30s milik provider ini. */
+        const response = await getCachedProviderValue('invoices:list', () =>
+          payment.listCustomerPackageInvoices({ page: 1, per_page: 1000 }),
+        );
+        return response.data
           .filter((invoice) =>
             includesQuery([invoice.invoice_number, invoice.description, invoice.status], query),
           )
@@ -131,6 +146,7 @@ export function getGlobalSearchProviders(): GlobalSearchProvider[] {
               invoice,
               context,
               tenantAdminBasePath(context, `/admin/invoices/${invoice.id}`),
+              { key: 'invoices', label: 'Invoices' },
             ),
           );
       },

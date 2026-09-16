@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // reference shared mock fns from those factories we must declare them via
 // vi.hoisted so they exist before any vi.mock factory runs. Plain top-level
 // const declarations would throw "Cannot access X before initialization".
-const { listInvoices, listRouters, listTeam, listAllInvoices } = vi.hoisted(() => ({
-  listInvoices: vi.fn(),
+const { listCustomerPackageInvoices, listRouters, listTeam, listAllInvoices } = vi.hoisted(() => ({
+  listCustomerPackageInvoices: vi.fn(),
   listRouters: vi.fn(),
   listTeam: vi.fn(),
   listAllInvoices: vi.fn(),
@@ -13,7 +13,7 @@ const { listInvoices, listRouters, listTeam, listAllInvoices } = vi.hoisted(() =
 
 vi.mock('$lib/api/payment', () => ({
   payment: {
-    listInvoices,
+    listCustomerPackageInvoices,
     listAllInvoices,
   },
 }));
@@ -63,25 +63,30 @@ const adminContext: GlobalSearchProviderContext = {
 describe('globalSearchProviders cache', () => {
   beforeEach(() => {
     resetGlobalSearchProviderCaches();
-    listInvoices.mockReset();
+    listCustomerPackageInvoices.mockReset();
     listRouters.mockReset();
     listTeam.mockReset();
     listAllInvoices.mockReset();
   });
 
   it('reuses cached load-all provider data between searches', async () => {
-    listInvoices.mockResolvedValue([
-      {
-        id: 'inv-1',
-        invoice_number: 'INV-1',
-        amount: 1,
-        status: 'pending',
-        description: 'Alpha',
-        due_date: '2026-01-01',
-        paid_at: null,
-        payment_method: null,
-      },
-    ]);
+    listCustomerPackageInvoices.mockResolvedValue({
+      data: [
+        {
+          id: 'inv-1',
+          invoice_number: 'INV-1',
+          amount: 1,
+          status: 'pending',
+          description: 'Alpha',
+          due_date: '2026-01-01',
+          paid_at: null,
+          payment_method: null,
+        },
+      ],
+      total: 1,
+      page: 1,
+      per_page: 1000,
+    });
 
     const provider = getGlobalSearchProviders().find((item) => item.key === 'invoices');
     if (!provider) throw new Error('invoices provider missing');
@@ -89,6 +94,6 @@ describe('globalSearchProviders cache', () => {
     await provider.search('alpha', adminContext);
     await provider.search('inv', adminContext);
 
-    expect(listInvoices).toHaveBeenCalledTimes(1);
+    expect(listCustomerPackageInvoices).toHaveBeenCalledTimes(1);
   });
 });
