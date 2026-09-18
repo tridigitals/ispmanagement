@@ -1,6 +1,6 @@
 mod core;
 mod dto;
-pub(crate) mod email_sync;
+pub(crate) mod identity_sync;
 mod helpers;
 mod lifecycle;
 mod mapper;

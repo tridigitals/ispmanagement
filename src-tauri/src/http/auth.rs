@@ -855,7 +855,7 @@ pub async fn update_me(
             ));
         }
         let taken =
-            crate::services::customer_service::email_sync::email_taken_by_other_user(
+            crate::services::customer_service::identity_sync::email_taken_by_other_user(
                 &state.auth_service.pool,
                 new_email,
                 &claims.sub,
@@ -918,13 +918,14 @@ pub async fn update_me(
     query = query.bind(&claims.sub);
     query.execute(&state.auth_service.pool).await?;
 
-    // Kalau user ini adalah akun login sebuah pelanggan, email pelanggan ikut
-    // berubah supaya customers.email dan users.email tetap identik.
-    if let Some(ref email) = payload.email {
-        crate::services::customer_service::email_sync::sync_user_email_to_customers(
+    // Kalau user ini adalah akun login sebuah pelanggan, data pelanggan ikut
+    // berubah supaya customers dan users tetap identik.
+    if payload.email.is_some() || payload.phone.is_some() {
+        crate::services::customer_service::identity_sync::sync_user_identity_to_customers(
             &state.auth_service.pool,
             &claims.sub,
-            email.trim(),
+            payload.email.as_deref(),
+            payload.phone.as_deref(),
             Some(&claims.sub),
         )
         .await?;

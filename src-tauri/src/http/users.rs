@@ -128,6 +128,7 @@ pub struct UpdateUserDto2 {
     email: Option<String>,
     name: Option<String>,
     role: Option<String>,
+    phone: Option<String>,
     #[serde(rename = "isActive", alias = "is_active")]
     is_active: Option<bool>,
 }
@@ -158,6 +159,7 @@ pub async fn update_user(
         email: payload.email,
         name: payload.name,
         role: payload.role,
+        phone: payload.phone,
         is_active: payload.is_active,
         is_super_admin: None,
     };

@@ -34,6 +34,7 @@ export const users = {
       name?: string;
       role?: string;
       isActive?: boolean;
+      phone?: string | null;
     },
   ): Promise<User> =>
     safeInvoke('update_user', {
@@ -42,6 +43,7 @@ export const users = {
       email: data.email,
       name: data.name,
       role: data.role,
+      phone: data.phone,
       isActive: data.isActive,
       is_active: data.isActive,
     }),

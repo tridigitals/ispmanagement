@@ -1841,6 +1841,11 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
+        // Simpan nilai identitas baru sebelum `dto` dipindah-pindah di bawah,
+        // dipakai untuk sinkronisasi ke akun login setelah UPDATE.
+        let sync_email = dto.email.as_deref().map(|v| v.trim().to_string());
+        let sync_phone = dto.phone.as_deref().map(|v| v.trim().to_string());
+
         let mut customer = self.get_customer(actor_id, tenant_id, customer_id).await?;
 
         // Validasi email SEBELUM menulis apa pun. Kalau email baru ternyata milik
@@ -1849,26 +1854,19 @@ impl CustomerService {
         // keduanya jadi berbeda (bug yang ditemukan saat uji E2E).
         if let Some(ref email) = dto.email {
             let candidate = email.trim();
-            if !candidate.is_empty() && !candidate.eq_ignore_ascii_case(customer.email.as_deref().unwrap_or("")) {
-                for user_id in crate::services::customer_service::email_sync::linked_portal_user_ids(
+            if !candidate.is_empty()
+                && !candidate.eq_ignore_ascii_case(customer.email.as_deref().unwrap_or(""))
+            {
+                crate::services::customer_service::identity_sync::ensure_customer_email_available(
                     &self.pool,
                     tenant_id,
                     customer_id,
+                    candidate,
                 )
-                .await?
-                {
-                    if crate::services::customer_service::email_sync::email_taken_by_other_user(
-                        &self.pool,
-                        candidate,
-                        &user_id,
-                    )
-                    .await?
-                    {
-                        return Err(AppError::UserAlreadyExists);
-                    }
-                }
+                .await?;
             }
         }
+
 
         if let Some(name) = dto.name {
             customer.name = name;
@@ -1940,22 +1938,18 @@ impl CustomerService {
             )
             .await;
 
-        // Sinkronkan email pelanggan ke akun login-nya (kalau ada) supaya
-        // customers.email dan users.email tidak pernah berbeda. Cek unik ada di
-        // dalam helper — jangan sampai email user lain tertimpa.
-        if let Some(ref email) = dto.email {
-            let new_email = email.trim().to_string();
-            if !new_email.is_empty() {
-                crate::services::customer_service::email_sync::sync_customer_email_to_user(
-                    &self.pool,
-                    tenant_id,
-                    customer_id,
-                    &new_email,
-                    Some(actor_id),
-                )
-                .await?;
-            }
-        }
+        // Sinkronkan identitas pelanggan (email + phone) ke akun login-nya supaya
+        // customers dan users tidak pernah berbeda. Cek unik email ada di dalam
+        // helper — jangan sampai email user lain tertimpa.
+        crate::services::customer_service::identity_sync::sync_customer_identity_to_user(
+            &self.pool,
+            tenant_id,
+            customer_id,
+            sync_email.as_deref(),
+            sync_phone.as_deref(),
+            Some(actor_id),
+        )
+        .await?;
 
         if dto.is_active.is_some() {
             self.sync_customer_pppoe_disabled_state(tenant_id, customer_id, customer.is_active)
@@ -2571,6 +2565,23 @@ impl CustomerService {
         let _ = self
             .get_customer(actor_id, tenant_id, &dto.customer_id)
             .await?;
+
+        // Aturan bisnis: satu pelanggan hanya boleh punya SATU akun login.
+        // Ditegakkan di sini (satu-satunya jalur penautan) supaya sinkronisasi
+        // identitas tidak ambigu — kalau ada dua akun, email mana yang benar?
+        let existing_count =
+            crate::services::customer_service::identity_sync::count_linked_portal_users(
+                &self.pool,
+                tenant_id,
+                &dto.customer_id,
+            )
+            .await?;
+        if existing_count > 0 {
+            return Err(AppError::Validation(
+                "Customer already has a login account. Remove it first before adding another."
+                    .to_string(),
+            ));
+        }
 
         let cu = CustomerUser::new(tenant_id.to_string(), dto.customer_id, dto.user_id);
 

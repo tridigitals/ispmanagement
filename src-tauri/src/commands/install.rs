@@ -97,6 +97,7 @@ pub async fn install_app(
         email: None,
         name: None,
         role: Some("admin".to_string()),
+        phone: None,
         is_super_admin: Some(true),
         is_active: Some(true),
     };

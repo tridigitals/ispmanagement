@@ -289,6 +289,7 @@ impl UserService {
         let before_role = user.role.clone();
         let before_is_super_admin = user.is_super_admin;
         let before_is_active = user.is_active;
+        let before_phone = user.phone.clone();
 
         // Update fields if provided
         if let Some(email) = dto.email {
@@ -317,21 +318,28 @@ impl UserService {
         if let Some(is_active) = dto.is_active {
             user.is_active = is_active;
         }
+        if let Some(phone) = dto.phone {
+            let v = phone.trim().to_string();
+            user.phone = if v.is_empty() { None } else { Some(v) };
+        }
 
         let updated_at = Utc::now();
         let email_changed = !user.email.eq_ignore_ascii_case(&before_email);
+        let phone_changed = user.phone.as_deref().unwrap_or("").trim()
+            != before_phone.as_deref().unwrap_or("").trim();
 
         let query = sqlx::query(
             r#"
-            UPDATE users SET email = $1, name = $2, role = $3, is_super_admin = $4, is_active = $5, updated_at = $6
-            WHERE id = $7
+            UPDATE users SET email = $1, name = $2, role = $3, is_super_admin = $4, is_active = $5, phone = $6, updated_at = $7
+            WHERE id = $8
             "#,
         )
         .bind(&user.email)
         .bind(&user.name)
         .bind(&user.role)
         .bind(user.is_super_admin)
-        .bind(user.is_active);
+        .bind(user.is_active)
+        .bind(&user.phone);
 
         #[cfg(feature = "postgres")]
         let query = query.bind(updated_at);
@@ -343,20 +351,21 @@ impl UserService {
 
         user.updated_at = updated_at;
 
-        // Kalau email user berubah dan user ini adalah akun login sebuah
-        // pelanggan, email di tabel customers wajib ikut berubah supaya
-        // keduanya tidak pernah berbeda (termasuk saat diedit dari superadmin).
-        if email_changed {
+        // Kalau identitas user berubah dan user ini adalah akun login sebuah
+        // pelanggan, data pelanggan ikut berubah supaya keduanya tidak pernah
+        // berbeda (termasuk saat diedit dari superadmin).
+        if email_changed || phone_changed {
             let synced =
-                crate::services::customer_service::email_sync::sync_user_email_to_customers(
+                crate::services::customer_service::identity_sync::sync_user_identity_to_customers(
                     &self.pool,
                     id,
-                    &user.email,
+                    if email_changed { Some(user.email.as_str()) } else { None },
+                    if phone_changed { user.phone.as_deref() } else { None },
                     actor_id,
                 )
                 .await?;
             if synced > 0 {
-                tracing::info!("EMAIL_CHANGE user {} synced to {} customer row(s)", id, synced);
+                tracing::info!("IDENTITY_CHANGE user {} synced to {} customer row(s)", id, synced);
             }
         }
 

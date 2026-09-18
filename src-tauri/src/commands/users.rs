@@ -124,6 +124,7 @@ pub async fn update_user(
     name: Option<String>,
     role: Option<String>,
     is_active: Option<bool>,
+    phone: Option<String>,
     user_service: State<'_, UserService>,
     auth_service: State<'_, AuthService>,
 ) -> Result<UserResponse, String> {
@@ -146,6 +147,7 @@ pub async fn update_user(
         email,
         name,
         role,
+        phone,
         is_active,
         is_super_admin: None,
     };

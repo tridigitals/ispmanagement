@@ -197,6 +197,10 @@ pub struct UpdateUserDto {
     pub name: Option<String>,
     #[validate(length(max = 50, message = "Role too long"))]
     pub role: Option<String>,
+    /// Nomor telepon. Ikut disinkronkan ke `customers.phone` kalau user ini
+    /// adalah akun login sebuah pelanggan, supaya keduanya tidak berbeda.
+    #[validate(length(max = 32, message = "Phone too long"))]
+    pub phone: Option<String>,
     pub is_super_admin: Option<bool>,
     pub is_active: Option<bool>,
 }
