@@ -1,5 +1,6 @@
 mod core;
 mod dto;
+pub(crate) mod email_sync;
 mod helpers;
 mod lifecycle;
 mod mapper;

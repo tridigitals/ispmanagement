@@ -319,6 +319,7 @@ impl UserService {
         }
 
         let updated_at = Utc::now();
+        let email_changed = !user.email.eq_ignore_ascii_case(&before_email);
 
         let query = sqlx::query(
             r#"
@@ -341,6 +342,23 @@ impl UserService {
         query.bind(id).execute(&self.pool).await?;
 
         user.updated_at = updated_at;
+
+        // Kalau email user berubah dan user ini adalah akun login sebuah
+        // pelanggan, email di tabel customers wajib ikut berubah supaya
+        // keduanya tidak pernah berbeda (termasuk saat diedit dari superadmin).
+        if email_changed {
+            let synced =
+                crate::services::customer_service::email_sync::sync_user_email_to_customers(
+                    &self.pool,
+                    id,
+                    &user.email,
+                    actor_id,
+                )
+                .await?;
+            if synced > 0 {
+                tracing::info!("EMAIL_CHANGE user {} synced to {} customer row(s)", id, synced);
+            }
+        }
 
         // Audit Log
         let details = serde_json::json!({

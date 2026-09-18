@@ -1912,41 +1912,19 @@ impl CustomerService {
             )
             .await;
 
-        // Sync customer email to linked users table
+        // Sinkronkan email pelanggan ke akun login-nya (kalau ada) supaya
+        // customers.email dan users.email tidak pernah berbeda. Cek unik ada di
+        // dalam helper — jangan sampai email user lain tertimpa.
         if let Some(ref email) = dto.email {
-            let new_email = email.trim();
+            let new_email = email.trim().to_string();
             if !new_email.is_empty() {
-                #[cfg(feature = "postgres")]
-                sqlx::query(
-                    r#"
-                    UPDATE users SET email = $1, updated_at = NOW()
-                    WHERE id IN (
-                        SELECT user_id FROM customer_users
-                        WHERE customer_id = $2 AND tenant_id = $3
-                    )
-                    "#,
+                crate::services::customer_service::email_sync::sync_customer_email_to_user(
+                    &self.pool,
+                    tenant_id,
+                    customer_id,
+                    &new_email,
+                    Some(actor_id),
                 )
-                .bind(new_email)
-                .bind(customer_id)
-                .bind(tenant_id)
-                .execute(&self.pool)
-                .await?;
-
-                #[cfg(feature = "sqlite")]
-                sqlx::query(
-                    r#"
-                    UPDATE users SET email = ?, updated_at = ?
-                    WHERE id IN (
-                        SELECT user_id FROM customer_users
-                        WHERE customer_id = ? AND tenant_id = ?
-                    )
-                    "#,
-                )
-                .bind(new_email)
-                .bind(chrono::Utc::now().to_rfc3339())
-                .bind(customer_id)
-                .bind(tenant_id)
-                .execute(&self.pool)
                 .await?;
             }
         }

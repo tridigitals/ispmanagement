@@ -845,6 +845,27 @@ pub async fn update_me(
 
     let claims = state.auth_service.validate_token(auth_header).await?;
 
+    // Email dipakai untuk login dan reset password, jadi wajib unik. Tanpa cek
+    // ini, `update_me` bisa menimpa/menduplikasi email user lain.
+    if let Some(ref new_email) = payload.email {
+        let new_email = new_email.trim();
+        if new_email.is_empty() {
+            return Err(crate::error::AppError::Validation(
+                "Email cannot be empty".to_string(),
+            ));
+        }
+        let taken =
+            crate::services::customer_service::email_sync::email_taken_by_other_user(
+                &state.auth_service.pool,
+                new_email,
+                &claims.sub,
+            )
+            .await?;
+        if taken {
+            return Err(crate::error::AppError::UserAlreadyExists);
+        }
+    }
+
     let mut updates = Vec::new();
     let mut idx = 1u32;
     if payload.name.is_some() {
@@ -896,6 +917,18 @@ pub async fn update_me(
 
     query = query.bind(&claims.sub);
     query.execute(&state.auth_service.pool).await?;
+
+    // Kalau user ini adalah akun login sebuah pelanggan, email pelanggan ikut
+    // berubah supaya customers.email dan users.email tetap identik.
+    if let Some(ref email) = payload.email {
+        crate::services::customer_service::email_sync::sync_user_email_to_customers(
+            &state.auth_service.pool,
+            &claims.sub,
+            email.trim(),
+            Some(&claims.sub),
+        )
+        .await?;
+    }
 
     Ok(Json(json!({ "success": true })))
 }
