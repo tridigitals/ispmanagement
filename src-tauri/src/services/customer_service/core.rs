@@ -1842,6 +1842,34 @@ impl CustomerService {
             .await?;
 
         let mut customer = self.get_customer(actor_id, tenant_id, customer_id).await?;
+
+        // Validasi email SEBELUM menulis apa pun. Kalau email baru ternyata milik
+        // user lain, kita harus berhenti di sini — kalau tidak, customers.email
+        // sudah terlanjur berubah sementara users.email gagal di-sync, dan
+        // keduanya jadi berbeda (bug yang ditemukan saat uji E2E).
+        if let Some(ref email) = dto.email {
+            let candidate = email.trim();
+            if !candidate.is_empty() && !candidate.eq_ignore_ascii_case(customer.email.as_deref().unwrap_or("")) {
+                for user_id in crate::services::customer_service::email_sync::linked_portal_user_ids(
+                    &self.pool,
+                    tenant_id,
+                    customer_id,
+                )
+                .await?
+                {
+                    if crate::services::customer_service::email_sync::email_taken_by_other_user(
+                        &self.pool,
+                        candidate,
+                        &user_id,
+                    )
+                    .await?
+                    {
+                        return Err(AppError::UserAlreadyExists);
+                    }
+                }
+            }
+        }
+
         if let Some(name) = dto.name {
             customer.name = name;
         }

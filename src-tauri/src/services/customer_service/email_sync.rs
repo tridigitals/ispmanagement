@@ -49,6 +49,22 @@ pub(crate) async fn email_taken_by_other_user(
     Ok(taken)
 }
 
+/// Daftar user_id yang tertaut ke sebuah pelanggan (akun login-nya).
+pub(crate) async fn linked_portal_user_ids(
+    pool: &DbPool,
+    tenant_id: &str,
+    customer_id: &str,
+) -> AppResult<Vec<String>> {
+    let ids: Vec<String> = sqlx::query_scalar(
+        "SELECT user_id FROM customer_users WHERE customer_id = $1 AND tenant_id = $2",
+    )
+    .bind(customer_id)
+    .bind(tenant_id)
+    .fetch_all(pool)
+    .await?;
+    Ok(ids)
+}
+
 /// Ubah email `users` untuk user utama sebuah pelanggan, dengan cek unik.
 ///
 /// Dipakai saat email pelanggan diedit. Kalau pelanggan tidak punya akun login,
