@@ -89,6 +89,14 @@ export const customers = {
       }),
   },
 
+  /**
+   * Buat pelanggan BARU.
+   *
+   * Selalu pakai `createWithPortal` — pelanggan dan akun login-nya wajib lahir
+   * bersamaan supaya email keduanya identik sejak awal. Fungsi ini sengaja
+   * diarahkan ke flow portal agar tidak ada pemanggil yang membuat pelanggan
+   * tanpa akun login (dulu menghasilkan pelanggan "yatim").
+   */
   create: (dto: {
     name: string;
     email?: string | null;

@@ -1086,74 +1086,19 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
-        let customer_number = self.next_customer_number(tenant_id).await?;
-        let customer = Customer::new(
-            tenant_id.to_string(),
-            dto.name,
-            dto.email,
-            dto.phone,
-            dto.notes,
-            dto.is_active,
-            Some(customer_number),
-        );
-
-        #[cfg(feature = "postgres")]
-        sqlx::query(
-            r#"
-            INSERT INTO customers
-                (id, tenant_id, name, email, phone, notes, is_active, customer_number, created_at, updated_at)
-            VALUES
-                ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-            "#,
-        )
-        .bind(&customer.id)
-        .bind(&customer.tenant_id)
-        .bind(&customer.name)
-        .bind(&customer.email)
-        .bind(&customer.phone)
-        .bind(&customer.notes)
-        .bind(customer.is_active)
-        .bind(&customer.customer_number)
-        .bind(customer.created_at)
-        .bind(customer.updated_at)
-        .execute(&self.pool)
-        .await?;
-
-        #[cfg(feature = "sqlite")]
-        sqlx::query(
-            r#"
-            INSERT INTO customers
-                (id, tenant_id, name, email, phone, notes, is_active, customer_number, created_at, updated_at)
-            VALUES
-                (?,?,?,?,?,?,?,?,?,?)
-            "#,
-        )
-        .bind(&customer.id)
-        .bind(&customer.tenant_id)
-        .bind(&customer.name)
-        .bind(&customer.email)
-        .bind(&customer.phone)
-        .bind(&customer.notes)
-        .bind(customer.is_active)
-        .bind(&customer.customer_number)
-        .bind(customer.created_at.to_rfc3339())
-        .bind(customer.updated_at.to_rfc3339())
-        .execute(&self.pool)
-        .await?;
-
-        self.audit_service
-            .log(
-                Some(actor_id),
-                Some(tenant_id),
-                "CUSTOMER_CREATE",
-                "customers",
-                Some(&customer.id),
-                Some(&format!("Created customer {}", customer.name)),
-                ip_address,
-            )
-            .await;
-
-        Ok(customer)
+        // Aturan: pelanggan dan akun login-nya selalu dibuat bersamaan, jadi
+        // pembuatan pelanggan WAJIB lewat create_customer_with_portal.
+        //
+        // Fungsi ini tadinya jalur publik (POST /customers) yang membuat
+        // pelanggan tanpa akun login sama sekali — pelanggan "yatim" yang tidak
+        // bisa login. Data lama menunjukkan jalur inilah yang menghasilkan 548
+        // dari 555 pelanggan tanpa akun saat ini. Sekarang ditutup agar tidak
+        // ada lagi pelanggan yang lahir sendiri.
+        Err(AppError::Validation(
+            "Customer must be created together with a login account — use \
+             create_customer_with_portal"
+                .to_string(),
+        ))
     }
 
     pub async fn create_customer_with_portal(
@@ -1177,11 +1122,38 @@ impl CustomerService {
             ));
         }
 
+        // Pelanggan dan akun login-nya WAJIB lahir dengan email yang sama.
+        // Sebelumnya `dto.email` (pelanggan) dan `dto.portal_email` (akun) bisa
+        // berbeda karena keduanya diterima terpisah, sehingga pelanggan baru
+        // langsung lahir dengan pasangan email yang tidak identik — melanggar
+        // aturan "email pelanggan == email user" sejak detik pertama. Email
+        // akun adalah kredensial login dan UNIQUE, jadi ia yang jadi acuan.
+        if let Some(ref cust_email) = dto.email {
+            let trimmed = cust_email.trim();
+            if !trimmed.is_empty() && !trimmed.eq_ignore_ascii_case(&portal_email) {
+                return Err(AppError::Validation(
+                    "Customer email must match portal email — they are kept identical"
+                        .to_string(),
+                ));
+            }
+        }
+        if crate::services::customer_service::identity_sync::email_taken_by_other_user(
+            &self.pool,
+            &portal_email,
+            "",
+        )
+        .await?
+        {
+            return Err(AppError::UserAlreadyExists);
+        }
+
+        let customer_email = Some(portal_email.clone());
+
         let customer_number = self.next_customer_number(tenant_id).await?;
         let customer = Customer::new(
             tenant_id.to_string(),
             dto.name,
-            dto.email,
+            customer_email,
             dto.phone,
             dto.notes,
             dto.is_active,
