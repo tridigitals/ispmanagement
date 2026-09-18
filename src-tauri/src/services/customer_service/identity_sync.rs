@@ -110,6 +110,118 @@ pub(crate) async fn ensure_customer_email_available(
     Ok(())
 }
 
+/// Selaraskan data akun ke pelanggan SEBELUM akun itu ditautkan.
+///
+/// Dipanggil dari `add_portal_user`. Tanpa langkah ini, menautkan akun yang
+/// emailnya berbeda dari pelanggan langsung menghasilkan pasangan yang tidak
+/// identik — melanggar aturan "email pelanggan == email user" tanpa melalui
+/// validasi apa pun (bug yang ditemukan lewat uji E2E).
+///
+/// Aturan yang dipakai: `users.email` adalah kredensial login dan UNIQUE,
+/// jadi ia yang menang. Kalau email akun sudah dipakai user lain, tolak —
+/// jangan sampai pelanggan dipaksa memakai email milik orang lain.
+pub(crate) async fn align_user_to_customer_before_link(
+    pool: &DbPool,
+    tenant_id: &str,
+    customer_id: &str,
+    user_id: &str,
+) -> AppResult<()> {
+    let user_row: Option<(String, Option<String>)> =
+        sqlx::query_as("SELECT email, phone FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?;
+
+    let Some((user_email, user_phone)) = user_row else {
+        return Err(AppError::NotFound("User not found".to_string()));
+    };
+
+    let user_email = user_email.trim().to_string();
+    if user_email.is_empty() {
+        return Err(AppError::Validation(
+            "User must have an email before being linked to a customer".to_string(),
+        ));
+    }
+
+    // Email akun harus bebas dari user lain sebelum dipakai sebagai identitas
+    // pelanggan. Helper ini mengecualikan user ini sendiri.
+    if email_taken_by_other_user(pool, &user_email, user_id).await? {
+        return Err(AppError::UserAlreadyExists);
+    }
+
+    let customer_before: Option<(Option<String>, Option<String>)> =
+        sqlx::query_as("SELECT email, phone FROM customers WHERE id = $1")
+            .bind(customer_id)
+            .fetch_optional(pool)
+            .await?;
+    let Some((cust_email, cust_phone)) = customer_before else {
+        return Err(AppError::NotFound("Customer not found".to_string()));
+    };
+
+    // Samakan email pelanggan dengan email akun (email akun = kredensial login).
+    if !cust_email
+        .as_deref()
+        .unwrap_or("")
+        .trim()
+        .eq_ignore_ascii_case(&user_email)
+    {
+        sqlx::query("UPDATE customers SET email = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&user_email)
+            .bind(customer_id)
+            .execute(pool)
+            .await?;
+
+        audit_identity_change(
+            pool,
+            None,
+            tenant_id,
+            user_id,
+            "email",
+            cust_email.as_deref(),
+            &user_email,
+        )
+        .await;
+    }
+
+    // Phone: nomor akun menang kalau ada; kalau akun kosong, pakai nomor
+    // pelanggan supaya tidak ada data yang hilang.
+    let target_phone = match user_phone.as_deref().map(str::trim) {
+        Some(v) if !v.is_empty() => v.to_string(),
+        _ => cust_phone.as_deref().unwrap_or("").trim().to_string(),
+    };
+
+    if !target_phone.is_empty() && cust_phone.as_deref().unwrap_or("").trim() != target_phone {
+        sqlx::query("UPDATE customers SET phone = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&target_phone)
+            .bind(customer_id)
+            .execute(pool)
+            .await?;
+
+        audit_identity_change(
+            pool,
+            None,
+            tenant_id,
+            user_id,
+            "phone",
+            cust_phone.as_deref(),
+            &target_phone,
+        )
+        .await;
+    }
+
+    // Kalau akun belum punya nomor tapi pelanggan punya, isi akun dari pelanggan
+    // supaya kedua sisi tetap identik.
+    if user_phone.as_deref().unwrap_or("").trim().is_empty() && !target_phone.is_empty() {
+        sqlx::query("UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2")
+            .bind(&target_phone)
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+    }
+
+    Ok(())
+}
+
 /// Sinkronkan email + phone pelanggan ke akun login-nya.
 ///
 /// Dipakai saat pelanggan diedit. Kalau pelanggan tidak punya akun login, ini

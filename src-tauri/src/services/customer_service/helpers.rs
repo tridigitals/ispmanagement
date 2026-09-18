@@ -365,4 +365,57 @@ impl CustomerService {
             .flatten();
         Self::normalize_installation_work_order_visibility_mode(tenant_raw)
     }
+
+    /// Cabut keanggotaan tenant milik akun portal yang dilepas dari pelanggan.
+    ///
+    /// Tanpa ini, akun bekas pelanggan tetap memegang peran (mis. "customer")
+    /// di tenant dan masih bisa login ke portal walau sudah tidak tertaut ke
+    /// pelanggan mana pun — celah akses saat audit identitas.
+    ///
+    /// Sengaja hanya mencabut peran pelanggan: kalau akun itu juga staf
+    /// (owner/admin/teknisi) di tenant yang sama, keanggotaannya TIDAK dihapus.
+    pub(super) async fn revoke_portal_membership(
+        &self,
+        tenant_id: &str,
+        user_id: &str,
+        actor_id: &str,
+        ip_address: Option<&str>,
+    ) -> AppResult<u64> {
+        // Akun masih punya tautan ke pelanggan lain? Kalau ya, jangan dicabut.
+        let still_linked: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM customer_users WHERE user_id = $1)",
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+        if still_linked {
+            return Ok(0);
+        }
+
+        let res = sqlx::query(
+            "DELETE FROM tenant_members
+             WHERE tenant_id = $1 AND user_id = $2
+               AND lower(coalesce(role, '')) IN ('customer', 'pelanggan')",
+        )
+        .bind(tenant_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        if res.rows_affected() > 0 {
+            self.audit_service
+                .log(
+                    Some(actor_id),
+                    Some(tenant_id),
+                    "CUSTOMER_PORTAL_MEMBERSHIP_REVOKE",
+                    "tenant_members",
+                    Some(user_id),
+                    Some("Revoked portal membership after unlinking from customer"),
+                    ip_address,
+                )
+                .await;
+        }
+
+        Ok(res.rows_affected())
+    }
 }

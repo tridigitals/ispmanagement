@@ -2567,8 +2567,9 @@ impl CustomerService {
             .await?;
 
         // Aturan bisnis: satu pelanggan hanya boleh punya SATU akun login.
-        // Ditegakkan di sini (satu-satunya jalur penautan) supaya sinkronisasi
-        // identitas tidak ambigu — kalau ada dua akun, email mana yang benar?
+        // Ditegakkan di sini (satu-satunya jalur penautan eksplisit) supaya
+        // sinkronisasi identitas tidak ambigu — kalau ada dua akun, email mana
+        // yang benar?
         let existing_count =
             crate::services::customer_service::identity_sync::count_linked_portal_users(
                 &self.pool,
@@ -2582,6 +2583,19 @@ impl CustomerService {
                     .to_string(),
             ));
         }
+
+        // Invarian identitas juga harus ditegakkan SAAT MENAUTKAN, bukan hanya
+        // saat mengedit. Tanpa ini, menautkan akun yang emailnya berbeda
+        // langsung menghasilkan pasangan yang tidak identik — bug yang lolos
+        // lewat pintu ini. Sinkronkan data akun ke pelanggan sebelum menautkan
+        // supaya keduanya konsisten sejak detik pertama.
+        crate::services::customer_service::identity_sync::align_user_to_customer_before_link(
+            &self.pool,
+            tenant_id,
+            &dto.customer_id,
+            &dto.user_id,
+        )
+        .await?;
 
         let cu = CustomerUser::new(tenant_id.to_string(), dto.customer_id, dto.user_id);
 
@@ -2754,6 +2768,15 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
+        // Ambil user_id sebelum menghapus tautan — dibutuhkan untuk mencabut
+        // keanggotaan tenant akun tersebut.
+        let linked_user_id: Option<String> =
+            sqlx::query_scalar("SELECT user_id FROM customer_users WHERE tenant_id = $1 AND id = $2")
+                .bind(tenant_id)
+                .bind(customer_user_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
         #[cfg(feature = "postgres")]
         let res = sqlx::query("DELETE FROM customer_users WHERE tenant_id = $1 AND id = $2")
             .bind(tenant_id)
@@ -2772,6 +2795,15 @@ impl CustomerService {
             return Err(AppError::NotFound(
                 "Portal user mapping not found".to_string(),
             ));
+        }
+
+        // Keanggotaan tenant milik akun ini juga harus dicabut. Kalau tidak,
+        // akun bekas pelanggan tetap memegang peran (mis. "customer") di tenant
+        // dan masih bisa login ke portal walau sudah dilepas dari pelanggan —
+        // celah akses yang ditemukan saat audit identitas.
+        if let Some(ref uid) = linked_user_id {
+            self.revoke_portal_membership(tenant_id, uid, actor_id, ip_address)
+                .await?;
         }
 
         self.audit_service
