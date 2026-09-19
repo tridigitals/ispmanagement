@@ -13,6 +13,52 @@ pub struct SettingsService {
     audit_service: AuditService,
 }
 
+/// Nilai pengganti untuk setting sensitif pada response API read.
+pub const MASKED_VALUE: &str = "********";
+
+/// Kunci setting yang nilainya rahasia (password/token/secret). Nilainya
+/// TIDAK boleh dikirim balik ke client lewat API read — hanya boleh ditulis.
+/// Taxonomy ini satu-satunya sumber; dipakai untuk masking API response,
+/// penolakan endpoint value, dan redaksi audit log.
+pub fn is_sensitive_setting_key(key: &str) -> bool {
+    let k = key.trim();
+
+    // Email: only secrets should be fully redacted.
+    if matches!(k, "email_smtp_password" | "email_api_key") {
+        return true;
+    }
+
+    if k.starts_with("wa_gateway_") {
+        return matches!(k, "wa_gateway_fonnte_token" | "wa_gateway_triwax_api_key")
+            || k.contains("token")
+            || k.contains("secret")
+            || k.contains("password");
+    }
+
+    // Payments: redact server/secret keys, but allow auditing non-secret toggles.
+    if k.starts_with("payment_") {
+        return matches!(
+            k,
+            "payment_midtrans_server_key"
+                | "payment_xendit_secret_key"
+                | "payment_stripe_secret_key"
+                | "payment_paypal_client_secret"
+        ) || k.contains("secret")
+            || k.contains("server_key")
+            || k.contains("private_key")
+            || k.contains("client_secret")
+            || k.ends_with("_api_key");
+    }
+
+    // Storage / auth secrets.
+    matches!(
+        k,
+        "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret"
+    ) || k.contains("secret")
+        || k.contains("password")
+        || k.ends_with("_token")
+}
+
 impl SettingsService {
     pub fn new(pool: DbPool, audit_service: AuditService) -> Self {
         Self {
@@ -21,9 +67,11 @@ impl SettingsService {
         }
     }
 
-    /// Get all settings for a tenant (or global if tenant_id is None)
+    /// Get all settings for a tenant (or global if tenant_id is None).
+    /// Nilai setting sensitif DI-MASK: client hanya perlu tahu "sudah diset",
+    /// bukan isinya. Write-only via upsert.
     pub async fn get_all(&self, tenant_id: Option<&str>) -> AppResult<Vec<Setting>> {
-        let settings = if let Some(tid) = tenant_id {
+        let mut settings: Vec<Setting> = if let Some(tid) = tenant_id {
             sqlx::query_as("SELECT * FROM settings WHERE tenant_id = $1 ORDER BY key")
                 .bind(tid)
                 .fetch_all(&self.pool)
@@ -33,6 +81,12 @@ impl SettingsService {
                 .fetch_all(&self.pool)
                 .await?
         };
+
+        for s in settings.iter_mut() {
+            if is_sensitive_setting_key(&s.key) {
+                s.value = MASKED_VALUE.to_string();
+            }
+        }
 
         Ok(settings)
     }
@@ -184,42 +238,9 @@ impl SettingsService {
     ) -> AppResult<Setting> {
         let now = Utc::now();
 
+        // Delegasi ke fungsi module-level (satu sumber taxonomy).
         fn is_sensitive_setting_key(key: &str) -> bool {
-            let k = key.trim();
-
-            // Email: only secrets should be fully redacted.
-            if matches!(k, "email_smtp_password") {
-                return true;
-            }
-
-            if k.starts_with("wa_gateway_") {
-                return matches!(k, "wa_gateway_fonnte_token" | "wa_gateway_triwax_api_key")
-                    || k.contains("token")
-                    || k.contains("secret")
-                    || k.contains("password");
-            }
-
-            // Payments: redact server/secret keys, but allow auditing non-secret toggles.
-            if k.starts_with("payment_") {
-                return matches!(
-                    k,
-                    "payment_midtrans_server_key"
-                        | "payment_xendit_secret_key"
-                        | "payment_stripe_secret_key"
-                        | "payment_paypal_client_secret"
-                ) || k.contains("secret")
-                    || k.contains("server_key")
-                    || k.contains("private_key")
-                    || k.contains("client_secret");
-            }
-
-            // Storage / auth secrets.
-            matches!(
-                k,
-                "storage_s3_access_key" | "storage_s3_secret_key" | "jwt_secret"
-            ) || k.contains("secret")
-                || k.contains("password")
-                || k.ends_with("_token")
+            super::settings_service::is_sensitive_setting_key(key)
         }
 
         fn summarize_value(key: &str, value: &str) -> serde_json::Value {
@@ -242,6 +263,30 @@ impl SettingsService {
 
         // Check if setting exists
         let existing = self.get_by_key(tenant_id.as_deref(), &dto.key).await?;
+
+        // Write-only guard: setting sensitif tidak pernah dikirim balik ke
+        // client (get_all mem-mask-nya). Kalau client mem-post balik nilai
+        // mask/kosong, artinya dia tidak mengubah apa-apa — JANGAN menimpa
+        // nilai asli dengan "********".
+        if is_sensitive_setting_key(dto.key.trim()) {
+            let incoming = dto.value.trim();
+            if incoming.is_empty() || incoming == MASKED_VALUE {
+                // Tetap lanjut kalau memang belum ada (set pertama kali),
+                // tapi tolak penimpaan dengan mask/kosong pada nilai lama.
+                if existing.is_some() {
+                    return Err(AppError::Validation(format!(
+                        "cannot set '{}' to empty/masked value; send the real value or omit the field",
+                        dto.key
+                    )));
+                }
+                if incoming.is_empty() {
+                    return Err(AppError::Validation(format!(
+                        "'{}' cannot be empty",
+                        dto.key
+                    )));
+                }
+            }
+        }
 
         if let Some(mut setting) = existing {
             // Update existing

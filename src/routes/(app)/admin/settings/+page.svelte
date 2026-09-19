@@ -524,6 +524,9 @@
         if (key === 'wa_gateway_enabled' && !val) val = 'false';
         if (key === 'wa_gateway_provider' && !val) val = 'disabled';
         if (key === 'wa_events_tenant' && !val) val = '{}';
+        // Setting sensitif write-only: API read mem-mask nilainya ("********").
+        // Jangan pre-fill mask ke form — kosongkan; kosong = tidak diubah.
+        if (val === '********') val = '';
         localSettings[key] = val;
       });
     });
@@ -741,6 +744,11 @@
             if (key === 'app_logo_path') return Promise.resolve();
             const val = localSettings[key];
             if (val !== undefined && val !== settings[key]?.value) {
+              // Secret write-only: dikirim sebagai "********" (= mask read) sama
+              // dengan tidak mengubah. Lewati supaya nilai lama tetap dipakai.
+              if (val.trim() === '' && settings[key]?.value === '********') {
+                return Promise.resolve();
+              }
               // If locale changed, update immediately
               if (key === 'default_locale') {
                 locale.set(val);

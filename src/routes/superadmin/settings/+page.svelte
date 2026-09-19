@@ -322,18 +322,25 @@
     storageS3Region = settingsMap['storage_s3_region'] || 'auto';
     storageS3Endpoint = settingsMap['storage_s3_endpoint'] || '';
     storageS3AccessKey = settingsMap['storage_s3_access_key'] || '';
-    storageS3SecretKey = settingsMap['storage_s3_secret_key'] || '';
+    // Secret TIDAK di-pre-fill: API read mem-mask nilai sensitif (write-only).
+    storageS3SecretKey = settingsMap['storage_s3_secret_key']?.startsWith('********')
+      ? ''
+      : settingsMap['storage_s3_secret_key'] || '';
     storageS3PublicUrl = settingsMap['storage_s3_public_url'] || '';
 
     // Payment
     paymentMidtransEnabled = settingsMap['payment_midtrans_enabled'] === 'true';
     paymentMidtransMerchantId = settingsMap['payment_midtrans_merchant_id'] || '';
-    paymentMidtransServerKey = settingsMap['payment_midtrans_server_key'] || '';
+    paymentMidtransServerKey = settingsMap['payment_midtrans_server_key']?.startsWith('********')
+      ? ''
+      : settingsMap['payment_midtrans_server_key'] || '';
     paymentMidtransClientKey = settingsMap['payment_midtrans_client_key'] || '';
     paymentMidtransIsProduction = settingsMap['payment_midtrans_is_production'] === 'true';
     paymentDuitkuEnabled = settingsMap['payment_duitku_enabled'] === 'true';
     paymentDuitkuMerchantCode = settingsMap['payment_duitku_merchant_code'] || '';
-    paymentDuitkuApiKey = settingsMap['payment_duitku_api_key'] || '';
+    paymentDuitkuApiKey = settingsMap['payment_duitku_api_key']?.startsWith('********')
+      ? ''
+      : settingsMap['payment_duitku_api_key'] || '';
     paymentDuitkuPaymentMethods =
       settingsMap['payment_duitku_payment_methods'] ||
       (settingsMap['payment_duitku_payment_method']
@@ -577,7 +584,11 @@
         api.settings.upsert('storage_s3_region', storageS3Region, 'S3 Region'),
         api.settings.upsert('storage_s3_endpoint', storageS3Endpoint, 'S3 Endpoint'),
         api.settings.upsert('storage_s3_access_key', storageS3AccessKey, 'S3 Access Key'),
-        api.settings.upsert('storage_s3_secret_key', storageS3SecretKey, 'S3 Secret Key'),
+        // Secret write-only: kalau dibiarkan kosong (tidak diubah), jangan kirim —
+        // nilai lama di server tetap terpakai.
+        ...(storageS3SecretKey.trim()
+          ? [api.settings.upsert('storage_s3_secret_key', storageS3SecretKey, 'S3 Secret Key')]
+          : []),
         api.settings.upsert('storage_s3_public_url', storageS3PublicUrl, 'S3 Public URL'),
         // Payment
         api.settings.upsert(
@@ -590,11 +601,16 @@
           paymentMidtransMerchantId,
           'Midtrans Merchant ID',
         ),
-        api.settings.upsert(
-          'payment_midtrans_server_key',
-          paymentMidtransServerKey,
-          'Midtrans Server Key',
-        ),
+        // Midtrans Server Key write-only: kosong = tidak diubah, jangan kirim.
+        ...(paymentMidtransServerKey.trim()
+          ? [
+              api.settings.upsert(
+                'payment_midtrans_server_key',
+                paymentMidtransServerKey,
+                'Midtrans Server Key',
+              ),
+            ]
+          : []),
         api.settings.upsert(
           'payment_midtrans_client_key',
           paymentMidtransClientKey,
@@ -615,7 +631,10 @@
           paymentDuitkuMerchantCode,
           'Duitku Merchant Code',
         ),
-        api.settings.upsert('payment_duitku_api_key', paymentDuitkuApiKey, 'Duitku API Key'),
+        // Duitku API key write-only: kosong = tidak diubah, jangan kirim.
+        ...(paymentDuitkuApiKey.trim()
+          ? [api.settings.upsert('payment_duitku_api_key', paymentDuitkuApiKey, 'Duitku API Key')]
+          : []),
         api.settings.upsert(
           'payment_duitku_payment_methods',
           paymentDuitkuPaymentMethods,

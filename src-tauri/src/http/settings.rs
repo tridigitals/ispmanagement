@@ -391,6 +391,13 @@ pub async fn get_setting(
     };
 
     let setting = state.settings_service.get_by_key(tenant_id, &key).await?;
+    // Masking: kunci sensitif tidak pernah dikirim ke client.
+    let mut setting = setting;
+    if let Some(ref mut s) = setting {
+        if crate::services::settings_service::is_sensitive_setting_key(&s.key) {
+            s.value = crate::services::settings_service::MASKED_VALUE.to_string();
+        }
+    }
     Ok(Json(setting))
 }
 
@@ -408,6 +415,16 @@ pub async fn get_setting_value(
             .auth_service
             .check_permission(&claims.sub, tenant_id, "settings", "read")
             .await?;
+    }
+
+    // Kunci sensitif (password/token/secret) write-only: nilai asli tidak
+    // pernah dikirim ke client. Ketersediaan dicek lewat get_all (nilai
+    // sudah di-mask di sana).
+    if crate::services::settings_service::is_sensitive_setting_key(&key) {
+        return Err(crate::error::AppError::Validation(format!(
+            "'{}' is write-only; its value is never exposed",
+            key
+        )));
     }
 
     // For superadmin, read GLOBAL settings
