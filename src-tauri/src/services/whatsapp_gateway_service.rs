@@ -5,10 +5,48 @@ use crate::models::whatsapp::{
 };
 use crate::services::SettingsService;
 use std::collections::HashMap;
+use tracing::warn;
 use uuid::Uuid;
 
 const FONNTE_DEFAULT_BASE_URL: &str = "https://api.fonnte.com/send";
 const TRIWAX_SEND_URL: &str = "https://api.triwax.com/api/external/v1/send";
+
+/// A7 (security): URL outbound gateway harus https dan tidak boleh mengarah ke
+/// host internal (localhost / private / link-local / metadata cloud). Mencegah
+/// SSRF via setting tenant (mis. `wa_gateway_fonnte_base_url`).
+pub fn validate_outbound_webhook_url(raw: &str) -> Result<String, String> {
+    let value = raw.trim();
+    let parsed = reqwest::Url::parse(value).map_err(|e| format!("URL tidak valid: {e}"))?;
+    if parsed.scheme() != "https" {
+        return Err("hanya https yang diizinkan".into());
+    }
+    let host = parsed
+        .host_str()
+        .ok_or_else(|| "host URL kosong".to_string())?
+        .to_ascii_lowercase();
+    let host = host.trim_end_matches('.');
+    if host == "localhost" || host.ends_with(".localhost") || host == "0.0.0.0" {
+        return Err(format!("host internal tidak diizinkan: {host}"));
+    }
+    // IP literal: tolak private/link-local/loopback.
+    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
+        let banned = match ip {
+            std::net::IpAddr::V4(v4) => {
+                v4.is_loopback()
+                    || v4.is_private()
+                    || v4.is_link_local()
+                    || v4.is_unspecified()
+                    || v4.octets()[0] == 100 && v4.octets()[1] >= 64 && v4.octets()[1] <= 127 // CGNAT 100.64/10
+                    || v4.octets()[0] == 169 && v4.octets()[1] == 254 // metadata cloud
+            }
+            std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unspecified(),
+        };
+        if banned {
+            return Err(format!("alamat IP internal tidak diizinkan: {host}"));
+        }
+    }
+    Ok(parsed.to_string())
+}
 
 async fn setting_value(
     svc: &SettingsService,
@@ -244,8 +282,13 @@ fn build_fonnte_request(
         .as_deref()
         .map(str::trim)
         .filter(|value| !value.is_empty())
-        .unwrap_or(FONNTE_DEFAULT_BASE_URL)
-        .to_string();
+        .map(|value| {
+            validate_outbound_webhook_url(value).unwrap_or_else(|e| {
+                warn!(url = %value, error = %e, "Fonnte base URL tidak valid, fallback ke default");
+                FONNTE_DEFAULT_BASE_URL.to_string()
+            })
+        })
+        .unwrap_or_else(|| FONNTE_DEFAULT_BASE_URL.to_string());
 
     let mut pairs = vec![
         format!("target={}", normalize_phone(phone)),

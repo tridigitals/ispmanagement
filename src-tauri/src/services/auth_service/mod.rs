@@ -28,6 +28,14 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 /// Auth service for handling authentication
+/// A1-m (security): recovery codes disimpan sebagai SHA-256 hash (bukan
+/// plaintext) — DB leak tidak langsung membocorkan kode yang masih valid.
+fn hash_recovery_code(code: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(code.trim().to_uppercase().as_bytes());
+    format!("{digest:x}")
+}
+
 #[derive(Clone)]
 pub struct AuthService {
     pub pool: DbPool,
@@ -41,6 +49,11 @@ pub struct AuthService {
     /// Used by every code path that resolves a user/session and needs the
     /// tenant-aware override for password / lockout / JWT / registration.
     per_tenant_auth_settings_cache: Arc<crate::services::cache::MemoryCache<AuthSettings>>,
+    /// A1-m (security): counter percobaan OTP/2FA gagal per user, in-memory.
+    /// Kunci = user_id. Reset saat kode benar / OTP baru dibuat.
+    pub(crate) otp_attempt_failures: Arc<
+        std::sync::Mutex<std::collections::HashMap<String, (u32, std::time::Instant)>>,
+    >,
 }
 
 impl AuthService {
@@ -60,6 +73,9 @@ impl AuthService {
             // Initialize cache with 60 second TTL
             auth_settings_cache: Arc::new(crate::services::cache::SingleValueCache::new(60)),
             per_tenant_auth_settings_cache: Arc::new(crate::services::cache::MemoryCache::new(60)),
+            otp_attempt_failures: Arc::new(std::sync::Mutex::new(
+                std::collections::HashMap::new(),
+            )),
         }
     }
 
@@ -2138,7 +2154,9 @@ impl AuthService {
         let recovery_codes: Vec<String> = (0..8)
             .map(|_| uuid::Uuid::new_v4().to_string().replace("-", "")[0..10].to_uppercase())
             .collect();
-        let recovery_codes_str = serde_json::to_string(&recovery_codes).unwrap();
+        let recovery_codes_str = serde_json::to_string(
+            &recovery_codes.iter().map(|c| hash_recovery_code(c)).collect::<Vec<_>>(),
+        ).unwrap();
 
         // Implement DB Update
         #[cfg(feature = "postgres")]
@@ -2266,6 +2284,50 @@ impl AuthService {
     }
 
     /// Verify Login 2FA
+    /// A1-m (security): cek & catat percobaan OTP gagal. Maks 5 percobaan per
+    /// 15 menit per user; lewat itu tolak (mencegah brute-force kode 6-digit).
+    const OTP_MAX_ATTEMPTS: u32 = 5;
+    const OTP_WINDOW: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
+    fn otp_gate_allow(&self, user_id: &str) -> bool {
+        let mut map = self
+            .otp_attempt_failures
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        let now = std::time::Instant::now();
+        let entry = map.get_mut(user_id);
+        match entry {
+            Some((count, since)) if now.duration_since(*since) < Self::OTP_WINDOW => {
+                *count < Self::OTP_MAX_ATTEMPTS
+            }
+            _ => true,
+        }
+    }
+
+    fn otp_gate_record_failure(&self, user_id: &str) {
+        let mut map = self
+            .otp_attempt_failures
+            .lock()
+            .unwrap_or_else(|p| p.into_inner());
+        let now = std::time::Instant::now();
+        let entry = map.get_mut(user_id);
+        match entry {
+            Some((count, since)) if now.duration_since(*since) < Self::OTP_WINDOW => {
+                *count += 1;
+            }
+            _ => {
+                map.insert(user_id.to_string(), (1, now));
+            }
+        }
+    }
+
+    fn otp_gate_reset(&self, user_id: &str) {
+        self.otp_attempt_failures
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .remove(user_id);
+    }
+
     pub async fn verify_login_2fa(&self, temp_token: &str, code: &str) -> AppResult<AuthResponse> {
         // 1. Decode temp token (use 2FA token validation - no session lookup)
         let claims = self.validate_2fa_token(temp_token).await?;
@@ -2275,6 +2337,13 @@ impl AuthService {
 
         let user_id = claims.sub;
         let user = self.get_user_by_id(&user_id).await?;
+
+        // A1-m (security): batasi percobaan OTP gagal (5 / 15 menit / user).
+        if !self.otp_gate_allow(&user.id) {
+            return Err(AppError::Validation(
+                "Terlalu banyak percobaan. Coba lagi dalam 15 menit.".to_string(),
+            ));
+        }
 
         // 2. Verify Code
         if user.two_factor_enabled {
@@ -2299,10 +2368,14 @@ impl AuthService {
                         .and_then(|s| serde_json::from_str(s).ok())
                         .unwrap_or_default();
 
-                    if let Some(pos) = recovery_codes.iter().position(|r| r == code) {
+                    if let Some(pos) = recovery_codes
+                        .iter()
+                        .position(|r| hash_recovery_code(code) == *r)
+                    {
                         // Used a recovery code! Remove it.
                         recovery_codes.remove(pos);
                         let new_recovery_str = serde_json::to_string(&recovery_codes).unwrap();
+                        self.otp_gate_reset(&user.id);
 
                         // Update DB
                         #[cfg(feature = "postgres")]
@@ -2323,6 +2396,7 @@ impl AuthService {
 
                         info!("User {} used a recovery code", user.id);
                     } else {
+                        self.otp_gate_record_failure(&user.id);
                         return Err(AppError::Validation("Invalid OTP code".to_string()));
                     }
                 }
@@ -2333,6 +2407,7 @@ impl AuthService {
             }
         }
 
+        self.otp_gate_reset(&user.id);
         // 3. Complete Login
         self.complete_login(user).await
     }
@@ -2430,6 +2505,13 @@ impl AuthService {
         // 2. Get user
         let user = self.get_user_by_id(&claims.sub).await?;
 
+        // A1-m (security): batasi percobaan OTP gagal (5 / 15 menit / user).
+        if !self.otp_gate_allow(&user.id) {
+            return Err(AppError::Validation(
+                "Terlalu banyak percobaan. Coba lagi dalam 15 menit.".to_string(),
+            ));
+        }
+
         // 3. Check code
         if let Some(stored_code) = &user.email_otp_code {
             if let Some(expires) = &user.email_otp_expires {
@@ -2437,6 +2519,7 @@ impl AuthService {
                     return Err(AppError::Validation("OTP code has expired".to_string()));
                 }
                 if stored_code != code {
+                    self.otp_gate_record_failure(&user.id);
                     return Err(AppError::Validation("Invalid OTP code".to_string()));
                 }
             } else {
@@ -2447,6 +2530,7 @@ impl AuthService {
         }
 
         // 4. Clear OTP
+        self.otp_gate_reset(&user.id);
         #[cfg(feature = "postgres")]
         sqlx::query(
             "UPDATE users SET email_otp_code = NULL, email_otp_expires = NULL WHERE id = $1",

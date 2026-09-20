@@ -351,6 +351,24 @@ impl UserService {
 
         user.updated_at = updated_at;
 
+        // A2-m (security): kalau user dinonaktifkan ATAU dicabut status
+        // superadmin, semua sesi berjalan langsung dihapus supaya perubahan
+        // berlaku seketika (bukan menunggu token/sesi kedaluwarsa).
+        let deactivated = before_is_active && !user.is_active;
+        let demoted = before_is_super_admin && !user.is_super_admin;
+        if deactivated || demoted {
+            let _ = sqlx::query("DELETE FROM sessions WHERE user_id = $1")
+                .bind(id)
+                .execute(&self.pool)
+                .await;
+            tracing::info!(
+                "SESSION_REVOKE user {} (deactivated: {}, demoted: {})",
+                id,
+                deactivated,
+                demoted
+            );
+        }
+
         // Kalau identitas user berubah dan user ini adalah akun login sebuah
         // pelanggan, data pelanggan ikut berubah supaya keduanya tidak pernah
         // berbeda (termasuk saat diedit dari superadmin).

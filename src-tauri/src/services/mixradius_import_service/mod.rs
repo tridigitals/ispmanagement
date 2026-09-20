@@ -39,6 +39,23 @@ impl MixradiusImportService {
         backup_path: P,
     ) -> Result<MixradiusImportBatch> {
         let backup_path = backup_path.as_ref();
+        // A8 (security, defense-in-depth): hanya file backup SQL/gzip yang sah.
+        let allowed = backup_path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| {
+                ext.eq_ignore_ascii_case("sql") || ext.eq_ignore_ascii_case("gz")
+            })
+            .unwrap_or(false);
+        if !allowed {
+            return Err(anyhow::anyhow!(
+                "backup file must have .sql or .gz extension (got `{}`)",
+                backup_path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .unwrap_or("<none>")
+            ));
+        }
         let backup_bytes = fs::read(backup_path)
             .with_context(|| format!("failed to read backup file `{}`", backup_path.display()))?;
         let source_sha256 = format!("{:x}", Sha256::digest(&backup_bytes));

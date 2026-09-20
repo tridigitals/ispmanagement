@@ -129,90 +129,18 @@ async fn get_batch(
 }
 
 async fn upload_backup(
-    State(state): State<AppState>,
-    headers: HeaderMap,
+    State(_state): State<AppState>,
+    _headers: HeaderMap,
     Json(dto): Json<UploadMixradiusImportRequest>,
 ) -> AppResult<Json<MixradiusImportBatch>> {
-    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
-    require_mixradius_permission(&state, &claims, &tenant_id, "manage").await?;
-
-    info!(
-        tenant_id = %tenant_id,
-        user_id = %claims.sub,
-        file_name = %dto.file_name,
-        file_size_bytes = dto.file_size_bytes,
-        has_local_path = dto.local_path.as_ref().map(|v| !v.trim().is_empty()).unwrap_or(false),
-        "MixRadius local-path upload request received"
-    );
-
-    if dto.file_name.trim().is_empty() {
-        warn!(tenant_id = %tenant_id, user_id = %claims.sub, "MixRadius upload rejected: empty file_name");
-        return Err(AppError::Validation("file_name is required".into()));
-    }
-    if dto.file_size_bytes <= 0 {
-        warn!(
-            tenant_id = %tenant_id,
-            user_id = %claims.sub,
-            file_size_bytes = dto.file_size_bytes,
-            "MixRadius upload rejected: non-positive file_size_bytes"
-        );
-        return Err(AppError::Validation(
-            "file_size_bytes must be greater than zero".into(),
-        ));
-    }
-
-    let local_path = dto
-        .local_path
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            warn!(
-                tenant_id = %tenant_id,
-                user_id = %claims.sub,
-                "MixRadius upload rejected: missing local_path"
-            );
-            AppError::Validation(
-                "local_path is required for MixRadius import upload in the current implementation"
-                    .into(),
-            )
-        })?;
-
-    let _source_metadata = (
-        dto.content_type
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty()),
-        dto.source_checksum
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty()),
-    );
-
-    let batch = state
-        .mixradius_import_service
-        .stage_backup(&tenant_id, Some(&claims.sub), local_path)
-        .await
-        .map_err(|error| {
-            error!(
-                tenant_id = %tenant_id,
-                user_id = %claims.sub,
-                local_path = %local_path,
-                error = %error,
-                "MixRadius local-path upload failed during stage_backup"
-            );
-            AppError::Internal(error.to_string())
-        })?;
-
-    info!(
-        tenant_id = %tenant_id,
-        user_id = %claims.sub,
-        batch_id = %batch.id,
-        source_filename = %batch.source_filename,
-        "MixRadius local-path upload staged successfully"
-    );
-
-    Ok(Json(batch))
+    // A8 (security): HTTP handler TIDAK pernah menerima local_path dari body.
+    // Browser tidak punya akses filesystem server — JSON path di endpoint HTTP
+    // hanyalah vektor arbitrary-file-read. Sisi web wajib memakai multipart
+    // (upload_backup_file); local_path hanya sah via Tauri command di desktop.
+    let _ = dto;
+    Err(AppError::Validation(
+        "local_path upload tidak didukung via HTTP; gunakan upload file (multipart)".into(),
+    ))
 }
 
 async fn upload_backup_file(
