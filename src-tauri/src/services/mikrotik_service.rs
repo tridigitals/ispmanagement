@@ -2408,6 +2408,120 @@ impl MikrotikService {
         }
     }
 
+    /// Wizard add-router (ad-hoc): baca PPP profiles + IP pools langsung dari
+    /// router yang belum tersimpan — TIDAK menulis ke DB. Kandidat plan.
+    pub async fn adhoc_fetch_profiles_pools(
+        &self,
+        host: &str,
+        port: i32,
+        username: &str,
+        password: &str,
+    ) -> AppResult<crate::models::MikrotikAdhocProfilesPools> {
+        let ephemeral = MikrotikRouter {
+            password: password.to_string(),
+            host: host.trim().to_string(),
+            port,
+            username: username.trim().to_string(),
+            ..MikrotikRouter::new(
+                String::new(),
+                String::from("adhoc"),
+                String::new(),
+                port,
+                String::new(),
+                String::new(),
+                false,
+                false,
+                None,
+                None,
+            )
+        };
+        let dev = self
+            .connect_device(&ephemeral)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // --- PPP profiles ---
+        let mut profiles = Vec::new();
+        let cmd_profiles = CommandBuilder::new()
+            .command("/ppp/profile/print")
+            .attribute("detail", Some(""))
+            .build();
+        let mut rx = dev
+            .send_command(cmd_profiles)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(r) = rx.recv().await {
+            if let Ok(CommandResponse::Reply(reply)) = r {
+                let name = reply
+                    .attributes
+                    .get("name")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_default();
+                if name.trim().is_empty() {
+                    continue;
+                }
+                let default_name = reply.attributes.get("default").and_then(|v| v.clone());
+                profiles.push(crate::models::MikrotikAdhocProfileRow {
+                    name,
+                    rate_limit: reply.attributes.get("rate-limit").and_then(|v| v.clone()),
+                    local_address: reply.attributes.get("local-address").and_then(|v| v.clone()),
+                    remote_address: reply
+                        .attributes
+                        .get("remote-address")
+                        .and_then(|v| v.clone()),
+                    dns_server: reply.attributes.get("dns-server").and_then(|v| v.clone()),
+                    default_profile: matches!(default_name.as_deref(), Some("true") | Some("yes")),
+                });
+            }
+        }
+        profiles.sort_by(|a, b| a.name.cmp(&b.name));
+
+        // --- IP pools ---
+        let mut pools = Vec::new();
+        let cmd_pools = CommandBuilder::new()
+            .command("/ip/pool/print")
+            .attribute("detail", Some(""))
+            .build();
+        let mut rx = dev
+            .send_command(cmd_pools)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        while let Some(r) = rx.recv().await {
+            if let Ok(CommandResponse::Reply(reply)) = r {
+                let name = reply
+                    .attributes
+                    .get("name")
+                    .and_then(|v| v.clone())
+                    .unwrap_or_default();
+                if name.trim().is_empty() {
+                    continue;
+                }
+                pools.push(crate::models::MikrotikAdhocPoolRow {
+                    name,
+                    ranges: reply.attributes.get("ranges").and_then(|v| v.clone()),
+                    comment: reply.attributes.get("comment").and_then(|v| v.clone()),
+                });
+            }
+        }
+        pools.sort_by(|a, b| a.name.cmp(&b.name));
+
+        Ok(crate::models::MikrotikAdhocProfilesPools { profiles, pools })
+    }
+
+    /// Wizard add-router: setelah router tersimpan, pull profil + pool dari
+    /// router ke DB (router_present) supaya mapping plan→profil valid, lalu
+    /// buat plan (IspPackage) untuk tiap profil terpilih + mapping-nya.
+    pub async fn seed_profiles_pools_from_router(
+        &self,
+        tenant_id: &str,
+        router_id: &str,
+    ) -> AppResult<()> {
+        // Tarik profil & pool ke DB (fungsi existing, arah router → DB).
+        self.sync_ppp_profiles(tenant_id, router_id).await?;
+        self.sync_ip_pools(tenant_id, router_id).await?;
+        Ok(())
+    }
+
     async fn connect_and_probe(
         &self,
         router: &MikrotikRouter,

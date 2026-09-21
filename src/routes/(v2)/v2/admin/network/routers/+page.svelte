@@ -121,7 +121,68 @@
   /* ===== Router add wizard (4 step) ===== */
   let wizardShow = $state(false);
   let wizardImportUsernames = $state<string[]>([]);
+  let wizardProfileNames = $state<string[]>([]);
+  let wizardPoolByProfile = $state<Record<string, string>>({});
   let wizardImporting = $state(false);
+
+  async function runWizardPlans(createdRouterId: string) {
+    if (wizardProfileNames.length === 0) return;
+    try {
+      // 1. Tarik profil + pool dari router ke DB (router_present) supaya
+      //    mapping plan→profil valid. Router baru → belum pernah sync.
+      await api.mikrotik.routers.syncPppProfiles(createdRouterId);
+      await api.mikrotik.routers.syncIpPools(createdRouterId);
+      // 2. Buat plan (harga 0) untuk tiap profil terpilih + mapping.
+      let created = 0;
+      for (const profileName of wizardProfileNames) {
+        try {
+          const pkg = await api.ispPackages.packages.create({
+            name: profileName,
+            provisioning_type: 'pppoe',
+            price_monthly: 0,
+            price_yearly: 0,
+          });
+          created += 1;
+          await api.ispPackages.routerMappings.upsert({
+            router_id: createdRouterId,
+            package_id: pkg.id,
+            router_profile_name: profileName,
+            address_pool: wizardPoolByProfile[profileName] || null,
+          });
+        } catch {
+          // Profil tanpa plan (mis. sudah ada) → tetap mapping bila paketnya ada.
+          try {
+            const found = await api.ispPackages.packages.list({ q: profileName, per_page: 10 });
+            const items = found.data as Array<{ id: string; name: string }>;
+            const match = items.find(
+              (p) => p.name.toLowerCase() === profileName.toLowerCase(),
+            );
+            if (match) {
+              await api.ispPackages.routerMappings.upsert({
+                router_id: createdRouterId,
+                package_id: match.id,
+                router_profile_name: profileName,
+                address_pool: wizardPoolByProfile[profileName] || null,
+              });
+            }
+          } catch {
+            // skip profil ini
+          }
+        }
+      }
+      if (created > 0) {
+        toast.success($t('admin.network.routers.wizard.plans_done', { values: { n: created } }));
+      } else {
+        toast.success($t('admin.network.routers.wizard.plans_skip'));
+      }
+    } catch (e) {
+      // Router sudah tersimpan; kegagalan plan tidak membatalkan router.
+      toast.error(extractApiErrorMessage(e));
+    } finally {
+      wizardProfileNames = [];
+      wizardPoolByProfile = {};
+    }
+  }
 
   async function runWizardImport(createdRouterId: string) {
     if (wizardImportUsernames.length === 0) return;
@@ -176,7 +237,10 @@
       const newId = (created as any)?.id;
       toast.success($t('admin.network.routers.toasts.created'));
       wizardShow = false;
-      if (newId) await runWizardImport(newId);
+      if (newId) {
+        await runWizardPlans(newId);
+        await runWizardImport(newId);
+      }
       await load();
     } catch (e) {
       toast.error(extractApiErrorMessage(e));
@@ -555,5 +619,7 @@
   bind:formLongitude
   bind:formEnabled
   bind:selectedUsernames={wizardImportUsernames}
+  bind:selectedProfileNames={wizardProfileNames}
+  bind:poolByProfileOut={wizardPoolByProfile}
   onSubmit={saveWizard}
 />

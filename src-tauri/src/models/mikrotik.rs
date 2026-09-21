@@ -487,6 +487,31 @@ pub struct MikrotikDhcpServer {
     pub disabled: bool,
 }
 
+/// Wizard add-router (ad-hoc): profil PPPoE + IP pool yang terbaca langsung
+/// dari router yang belum tersimpan — bahan kandidat pembuatan plan.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikAdhocProfileRow {
+    pub name: String,
+    pub rate_limit: Option<String>,
+    pub local_address: Option<String>,
+    pub remote_address: Option<String>,
+    pub dns_server: Option<String>,
+    pub default_profile: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikAdhocPoolRow {
+    pub name: String,
+    pub ranges: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MikrotikAdhocProfilesPools {
+    pub profiles: Vec<MikrotikAdhocProfileRow>,
+    pub pools: Vec<MikrotikAdhocPoolRow>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct MikrotikAlert {
     pub id: String,

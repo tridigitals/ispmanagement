@@ -413,6 +413,10 @@ const commandMap: Record<string, { method: string; path: string }> = {
     method: 'POST',
     path: '/admin/mikrotik/routers/adhoc-test',
   },
+  adhoc_mikrotik_profiles_pools: {
+    method: 'POST',
+    path: '/admin/mikrotik/routers/adhoc-profiles-pools',
+  },
   preview_pppoe_import_adhoc: {
     method: 'POST',
     path: '/admin/pppoe/routers/adhoc-import-preview',

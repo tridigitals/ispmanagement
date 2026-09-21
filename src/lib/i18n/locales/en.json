@@ -1831,7 +1831,17 @@
           "summary_host": "Host",
           "summary_identity": "Identity",
           "summary_import": "PPPoE accounts to import",
-          "summary_status": "Status"
+          "summary_status": "Status",
+          "tab_plans": "Profiles & Pools → Plans",
+          "tab_accounts": "PPPoE accounts",
+          "no_profiles": "No PPP profiles available to turn into plans.",
+          "plans_hint": "Selected profiles will be created as packages (plans) at price 0 — set prices later in Packages. Pool is optional for mapping.",
+          "pools_found": "pools found",
+          "plan_exists": "plan exists",
+          "plan_new": "new plan",
+          "summary_plans": "Plans to create",
+          "plans_done": "Plans created from profiles: {n}",
+          "plans_skip": "Profiles skipped — no plans created."
         }
       },
       "wallboard": {

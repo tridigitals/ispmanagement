@@ -119,6 +119,26 @@ export const mikrotik = {
         token: getTokenOrThrow(),
         ...dto,
       }),
+    adhocProfilesPools: (dto: {
+      host: string;
+      port?: number;
+      username: string;
+      password: string;
+    }): Promise<{
+      profiles: Array<{
+        name: string;
+        rate_limit?: string | null;
+        local_address?: string | null;
+        remote_address?: string | null;
+        dns_server?: string | null;
+        default_profile: boolean;
+      }>;
+      pools: Array<{ name: string; ranges?: string | null; comment?: string | null }>;
+    }> =>
+      safeInvoke('adhoc_mikrotik_profiles_pools', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
     metrics: (routerId: string, limit?: number): Promise<any[]> =>
       safeInvoke('list_mikrotik_router_metrics', {
         token: getTokenOrThrow(),

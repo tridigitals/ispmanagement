@@ -42,6 +42,7 @@ pub fn router() -> Router<AppState> {
         .route("/logs", get(list_logs))
         .route("/routers", get(list_routers).post(create_router))
         .route("/routers/adhoc-test", post(adhoc_test_connection))
+        .route("/routers/adhoc-profiles-pools", post(adhoc_profiles_pools))
         .route(
             "/routers/{id}",
             get(get_router).put(update_router).delete(delete_router),
@@ -1281,6 +1282,32 @@ async fn adhoc_test_connection(
         )
         .await;
 
+    Ok(Json(res))
+}
+
+// POST /api/admin/mikrotik/routers/adhoc-profiles-pools
+// Wizard add-router: baca PPP profiles + IP pools dari kredensial yang belum
+// tersimpan — bahan kandidat plan. Read-only terhadap router & DB.
+async fn adhoc_profiles_pools(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<AdhocTestConnectionRequest>,
+) -> AppResult<Json<crate::models::MikrotikAdhocProfilesPools>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
+        .await?;
+
+    let res = state
+        .mikrotik_service
+        .adhoc_fetch_profiles_pools(
+            &dto.host,
+            dto.port.unwrap_or(8728),
+            &dto.username,
+            &dto.password,
+        )
+        .await?;
     Ok(Json(res))
 }
 
