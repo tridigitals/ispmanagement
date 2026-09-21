@@ -1805,6 +1805,33 @@
           "created": "Router created",
           "updated": "Router updated",
           "deleted": "Router deleted"
+        },
+        "wizard": {
+          "title": "Add Router",
+          "step1": "Credentials",
+          "step2": "Location",
+          "step3": "Import",
+          "step4": "Finish",
+          "test": "Test Connection",
+          "testing": "Testing…",
+          "err_required": "Host and username are required.",
+          "err_conn": "Connection failed. Check host, port, and credentials.",
+          "conn_ok": "Connection OK",
+          "location_hint": "Optional — coordinates power the NOC map. You can fill this later.",
+          "include_disabled": "Include disabled secrets",
+          "loading": "Reading PPPoE secrets from router…",
+          "no_secrets": "No PPPoE secrets on this router (or click Reload).",
+          "load_preview": "Reload",
+          "select_all": "Select all changed",
+          "select_none": "Deselect all",
+          "import_note": "The router is saved first; selected PPPoE accounts are imported automatically afterwards.",
+          "import_done": "PPPoE accounts imported.",
+          "finish": "Save Router",
+          "summary_router": "Router",
+          "summary_host": "Host",
+          "summary_identity": "Identity",
+          "summary_import": "PPPoE accounts to import",
+          "summary_status": "Status"
         }
       },
       "wallboard": {
@@ -3682,7 +3709,9 @@
     "shown": "Shown",
     "subscription": "Subscription",
     "suspend": "Suspend",
-    "undo": "Undo"
+    "undo": "Undo",
+    "ok": "OK",
+    "testing": "Testing…"
   },
   "components": {
     "lightbox": {

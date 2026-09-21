@@ -41,6 +41,7 @@ pub fn router() -> Router<AppState> {
         .route("/incidents/{id}/resolve", post(resolve_incident))
         .route("/logs", get(list_logs))
         .route("/routers", get(list_routers).post(create_router))
+        .route("/routers/adhoc-test", post(adhoc_test_connection))
         .route(
             "/routers/{id}",
             get(get_router).put(update_router).delete(delete_router),
@@ -1226,6 +1227,61 @@ async fn delete_router(
         )
         .await;
     Ok(())
+}
+
+// POST /api/admin/mikrotik/routers/adhoc-test
+// Wizard add-router: test koneksi kredensial yang belum tersimpan.
+#[derive(Debug, Deserialize)]
+struct AdhocTestConnectionRequest {
+    host: String,
+    port: Option<i32>,
+    username: String,
+    password: String,
+}
+
+async fn adhoc_test_connection(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<AdhocTestConnectionRequest>,
+) -> AppResult<Json<MikrotikTestResult>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    state
+        .auth_service
+        .check_permission(&claims.sub, &tenant_id, "router_inventory", "manage")
+        .await?;
+
+    let res = state
+        .mikrotik_service
+        .test_connection_credentials(
+            &dto.host,
+            dto.port.unwrap_or(8728),
+            &dto.username,
+            &dto.password,
+        )
+        .await;
+
+    let details = if res.ok {
+        format!(
+            "Ad-hoc router test: ok identity={:?} version={:?}",
+            res.identity, res.ros_version
+        )
+    } else {
+        format!("Ad-hoc router test: failed error={:?}", res.error)
+    };
+    state
+        .audit_service
+        .log(
+            Some(&claims.sub),
+            Some(&tenant_id),
+            "router_inventory",
+            "adhoc_test_connection",
+            None,
+            Some(&details),
+            None,
+        )
+        .await;
+
+    Ok(Json(res))
 }
 
 // POST /api/admin/mikrotik/routers/{id}/test

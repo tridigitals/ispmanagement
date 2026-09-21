@@ -105,6 +105,18 @@ export const pppoe = {
   },
 
   import: {
+    previewAdhoc: (dto: {
+      host: string;
+      port?: number;
+      username: string;
+      password: string;
+      include_disabled?: boolean;
+    }): Promise<any[]> =>
+      safeInvoke('preview_pppoe_import_adhoc', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
+
     preview: (routerId: string, params?: { include_disabled?: boolean }): Promise<any[]> =>
       safeInvoke('preview_pppoe_import_from_router', {
         token: getTokenOrThrow(),

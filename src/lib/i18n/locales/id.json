@@ -1532,6 +1532,33 @@
           "created": "Router berhasil dibuat",
           "updated": "Router berhasil diperbarui",
           "deleted": "Router berhasil dihapus"
+        },
+        "wizard": {
+          "title": "Tambah Router",
+          "step1": "Kredensial",
+          "step2": "Lokasi",
+          "step3": "Import",
+          "step4": "Selesai",
+          "test": "Test Koneksi",
+          "testing": "Menguji…",
+          "err_required": "Host dan username wajib diisi.",
+          "err_conn": "Koneksi gagal. Periksa host, port, dan kredensial.",
+          "conn_ok": "Koneksi berhasil",
+          "location_hint": "Opsional — koordinat dipakai untuk peta NOC. Bisa diisi nanti.",
+          "include_disabled": "Sertakan secret yang di-disable",
+          "loading": "Membaca PPPoE secrets dari router…",
+          "no_secrets": "Tidak ada PPPoE secret di router ini (atau klik Muat Ulang).",
+          "load_preview": "Muat Ulang",
+          "select_all": "Pilih semua yang berubah",
+          "select_none": "Batal pilih semua",
+          "import_note": "Router disimpan dulu; akun PPPoE terpilih diimport otomatis setelah router tersimpan.",
+          "import_done": "Akun PPPoE berhasil diimport.",
+          "finish": "Simpan Router",
+          "summary_router": "Router",
+          "summary_host": "Host",
+          "summary_identity": "Identity",
+          "summary_import": "Akun PPPoE diimport",
+          "summary_status": "Status"
         }
       },
       "wallboard": {
@@ -3683,7 +3710,9 @@
     "shown": "Ditampilkan",
     "subscription": "Langganan",
     "suspend": "Tunda",
-    "undo": "Batalkan"
+    "undo": "Batalkan",
+    "ok": "OK",
+    "testing": "Menguji…"
   },
   "components": {
     "lightbox": {

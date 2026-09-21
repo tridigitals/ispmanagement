@@ -22,6 +22,7 @@
   import { page as pageStore } from '$app/stores';
   import { api } from '$lib/api/client';
   import RouterFormModal from '$lib/components/network/RouterFormModal.svelte';
+  import RouterAddWizard from '$lib/components/network/RouterAddWizard.svelte';
   import { extractApiErrorMessage } from '$lib/api/core';
   import { can } from '$lib/stores/auth';
   import { toast } from '$lib/stores/toast';
@@ -115,6 +116,73 @@
   function openCreate() {
     resetForm();
     formShow = true;
+  }
+
+  /* ===== Router add wizard (4 step) ===== */
+  let wizardShow = $state(false);
+  let wizardImportUsernames = $state<string[]>([]);
+  let wizardImporting = $state(false);
+
+  async function runWizardImport(createdRouterId: string) {
+    if (wizardImportUsernames.length === 0) return;
+    wizardImporting = true;
+    try {
+      await api.pppoe.import.run(createdRouterId, {
+        usernames: wizardImportUsernames,
+      });
+      toast.success($t('admin.network.routers.wizard.import_done'));
+    } catch (e) {
+      // Router sudah tersimpan; kegagalan import tidak membatalkan router.
+      toast.error(extractApiErrorMessage(e));
+    } finally {
+      wizardImporting = false;
+      wizardImportUsernames = [];
+    }
+  }
+
+  async function saveWizard() {
+    const name = formName.trim();
+    const host = formHost.trim();
+    if (!name || !host || !formUsername.trim() || !formPassword.trim()) {
+      toast.error($t('common.validation_error'));
+      return;
+    }
+    const latRaw = formLatitude.trim();
+    const lngRaw = formLongitude.trim();
+    const parsedLat = latRaw ? Number(latRaw) : NaN;
+    const parsedLng = lngRaw ? Number(lngRaw) : NaN;
+    if (latRaw && (Number.isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90)) {
+      toast.error($t('network.map.latitude_range_error'));
+      return;
+    }
+    if (lngRaw && (Number.isNaN(parsedLng) || parsedLng < -180 || parsedLng > 180)) {
+      toast.error($t('network.map.longitude_range_error'));
+      return;
+    }
+    const latitude = latRaw ? parsedLat : null;
+    const longitude = lngRaw ? parsedLng : null;
+    formSaving = true;
+    try {
+      const created = await api.mikrotik.routers.create({
+        name,
+        host,
+        port: formPort,
+        username: formUsername.trim(),
+        password: formPassword,
+        enabled: formEnabled,
+        latitude,
+        longitude,
+      });
+      const newId = (created as any)?.id;
+      toast.success($t('admin.network.routers.toasts.created'));
+      wizardShow = false;
+      if (newId) await runWizardImport(newId);
+      await load();
+    } catch (e) {
+      toast.error(extractApiErrorMessage(e));
+    } finally {
+      formSaving = false;
+    }
   }
 
   function openEdit(r: Row) {
@@ -332,7 +400,7 @@
     {#snippet actions()}
       <Button variant="ghost" icon="refresh" onclick={load}>{ $t('network.olt.refresh') }</Button>
       {#if $can('manage', 'router_inventory')}
-        <Button icon="plus" onclick={openCreate}>{ $t('admin.network.routers.v2list.add') }</Button>
+        <Button icon="plus" onclick={() => { resetForm(); wizardShow = true; }}>{ $t('admin.network.routers.v2list.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
@@ -474,4 +542,18 @@
   bind:formMaintenanceUntilLocal
   bind:formMaintenanceReason
   onSubmit={() => void saveForm()}
+/>
+
+<RouterAddWizard
+  bind:show={wizardShow}
+  bind:formName
+  bind:formHost
+  bind:formPort
+  bind:formUsername
+  bind:formPassword
+  bind:formLatitude
+  bind:formLongitude
+  bind:formEnabled
+  bind:selectedUsernames={wizardImportUsernames}
+  onSubmit={saveWizard}
 />

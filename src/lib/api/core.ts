@@ -409,6 +409,14 @@ const commandMap: Record<string, { method: string; path: string }> = {
   update_mikrotik_router: { method: 'PUT', path: '/admin/mikrotik/routers/:id' },
   delete_mikrotik_router: { method: 'DELETE', path: '/admin/mikrotik/routers/:id' },
   test_mikrotik_router: { method: 'POST', path: '/admin/mikrotik/routers/:id/test' },
+  adhoc_test_mikrotik_connection: {
+    method: 'POST',
+    path: '/admin/mikrotik/routers/adhoc-test',
+  },
+  preview_pppoe_import_adhoc: {
+    method: 'POST',
+    path: '/admin/pppoe/routers/adhoc-import-preview',
+  },
   get_mikrotik_router: { method: 'GET', path: '/admin/mikrotik/routers/:id' },
   get_mikrotik_router_snapshot: {
     method: 'GET',

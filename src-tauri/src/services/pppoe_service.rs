@@ -814,6 +814,152 @@ impl PppoeService {
     // Public API
     // ========================
 
+    /// Wizard add-router (ad-hoc): preview PPPoE secrets dari router yang
+    /// BELUM tersimpan — kredensial dikirim dari wizard (plaintext), dibanding
+    /// dengan data existing per-router yang sudah ada di DB.
+    pub async fn preview_import_from_credentials(
+        &self,
+        tenant_id: &str,
+        router_id: Option<&str>,
+        host: &str,
+        port: i32,
+        username: &str,
+        password: &str,
+        include_disabled: bool,
+    ) -> AppResult<Vec<PppoeImportCandidate>> {
+        let addr = format!("{}:{}", host.trim(), port);
+        let dev = timeout(
+            Duration::from_secs(5),
+            MikrotikDevice::connect(addr, username.trim(), Some(password)),
+        )
+        .await
+        .map_err(|_| AppError::Internal("Connection timed out".into()))?
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let secrets = self
+            .router_list_pppoe_secrets(&dev, false, include_disabled)
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        // Existing accounts utk router tujuan (kalau router sudah ada) atau
+        // per-host (ad-hoc sebelum tersimpan).
+        #[derive(sqlx::FromRow)]
+        struct ExistingRow {
+            id: String,
+            username: String,
+            router_profile_name: Option<String>,
+            remote_address: Option<String>,
+            address_pool: Option<String>,
+            disabled: bool,
+            comment: Option<String>,
+        }
+
+        let existing: Vec<ExistingRow> = if let Some(rid) = router_id {
+            sqlx::query_as(
+                r#"
+                SELECT id, username, router_profile_name, remote_address, address_pool, disabled, comment
+                FROM pppoe_accounts
+                WHERE tenant_id = $1 AND router_id = $2
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(rid)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        } else {
+            sqlx::query_as(
+                r#"
+                SELECT a.id, a.username, a.router_profile_name, a.remote_address, a.address_pool, a.disabled, a.comment
+                FROM pppoe_accounts a
+                JOIN mikrotik_routers r ON r.id = a.router_id AND r.tenant_id = a.tenant_id
+                WHERE a.tenant_id = $1 AND lower(r.host) = lower($2) AND r.port = $3
+                "#,
+            )
+            .bind(tenant_id)
+            .bind(host.trim())
+            .bind(port)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(AppError::Database)?
+        };
+
+        let mut map = std::collections::HashMap::<String, ExistingRow>::new();
+        for r in existing {
+            map.insert(r.username.clone(), r);
+        }
+
+        let norm = |s: Option<String>| s.unwrap_or_default().trim().to_string();
+
+        let mut out: Vec<PppoeImportCandidate> = Vec::new();
+        for s in secrets {
+            let secret_remote = norm(s.remote_address.clone());
+            let secret_profile = norm(s.profile_name.clone());
+            let secret_comment = norm(s.comment.clone());
+
+            if let Some(ex) = map.get(&s.username) {
+                let db_remote = {
+                    let a = norm(ex.remote_address.clone());
+                    if !a.is_empty() {
+                        a
+                    } else {
+                        norm(ex.address_pool.clone())
+                    }
+                };
+                let db_profile = norm(ex.router_profile_name.clone());
+                let db_comment = norm(ex.comment.clone());
+
+                let same = secret_remote == db_remote
+                    && secret_profile == db_profile
+                    && s.disabled == ex.disabled
+                    && secret_comment == db_comment;
+
+                out.push(PppoeImportCandidate {
+                    username: s.username,
+                    router_secret_id: s.router_secret_id,
+                    profile_name: s.profile_name,
+                    remote_address: s.remote_address,
+                    disabled: s.disabled,
+                    comment: s.comment,
+                    password_available: s.password_available,
+                    action: if same {
+                        PppoeImportAction::Same
+                    } else {
+                        PppoeImportAction::Update
+                    },
+                    existing_account_id: Some(ex.id.clone()),
+                });
+            } else {
+                out.push(PppoeImportCandidate {
+                    username: s.username,
+                    router_secret_id: s.router_secret_id,
+                    profile_name: s.profile_name,
+                    remote_address: s.remote_address,
+                    disabled: s.disabled,
+                    comment: s.comment,
+                    password_available: s.password_available,
+                    action: PppoeImportAction::New,
+                    existing_account_id: None,
+                });
+            }
+        }
+
+        fn rank(a: &PppoeImportAction) -> i32 {
+            match a {
+                PppoeImportAction::New => 0,
+                PppoeImportAction::Update => 1,
+                PppoeImportAction::Same => 2,
+            }
+        }
+        out.sort_by(|a, b| {
+            rank(&a.action)
+                .cmp(&rank(&b.action))
+                .then(a.username.cmp(&b.username))
+        });
+
+        Ok(out)
+    }
+
     pub async fn preview_import_from_router(
         &self,
         actor_id: &str,

@@ -24,6 +24,7 @@ pub fn router() -> Router<AppState> {
         .route("/accounts/{id}/apply", post(apply_account))
         .route("/routers/{router_id}/reconcile", post(reconcile_router))
         .route("/routers/{router_id}/import/preview", get(preview_import))
+        .route("/routers/adhoc-import-preview", post(preview_import_adhoc))
         .route("/routers/{router_id}/import", post(run_import))
 }
 
@@ -218,6 +219,39 @@ async fn preview_import(
             &tenant_id,
             &router_id,
             q.include_disabled.unwrap_or(false),
+        )
+        .await?;
+    Ok(Json(rows))
+}
+
+// POST /api/admin/pppoe/routers/adhoc-import-preview
+// Wizard add-router: preview PPPoE secrets dari kredensial yang belum tersimpan.
+#[derive(Debug, Deserialize)]
+struct AdhocImportPreviewRequest {
+    host: String,
+    port: Option<i32>,
+    username: String,
+    password: String,
+    include_disabled: Option<bool>,
+}
+
+async fn preview_import_adhoc(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(dto): Json<AdhocImportPreviewRequest>,
+) -> AppResult<Json<Vec<PppoeImportCandidate>>> {
+    let (tenant_id, claims) = tenant_and_claims(&state, &headers).await?;
+    require_pppoe_permission(&state, &claims, &tenant_id, "manage").await?;
+    let rows = state
+        .pppoe_service
+        .preview_import_from_credentials(
+            &tenant_id,
+            None,
+            &dto.host,
+            dto.port.unwrap_or(8728),
+            &dto.username,
+            &dto.password,
+            dto.include_disabled.unwrap_or(false),
         )
         .await?;
     Ok(Json(rows))

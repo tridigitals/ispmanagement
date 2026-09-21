@@ -2362,6 +2362,52 @@ impl MikrotikService {
         }
     }
 
+    /// Wizard add-router (ad-hoc): test koneksi dari kredensial yang diketik
+    /// user TANPA menyimpan router ke DB. Password dianggap plaintext.
+    pub async fn test_connection_credentials(
+        &self,
+        host: &str,
+        port: i32,
+        username: &str,
+        password: &str,
+    ) -> MikrotikTestResult {
+        let ephemeral = MikrotikRouter {
+            password: password.to_string(),
+            host: host.trim().to_string(),
+            port,
+            username: username.trim().to_string(),
+            ..MikrotikRouter::new(
+                String::new(),
+                String::from("adhoc"),
+                String::new(),
+                port,
+                String::new(),
+                String::new(),
+                false,
+                false,
+                None,
+                None,
+            )
+        };
+
+        match self.connect_and_probe(&ephemeral).await {
+            Ok((identity, version)) => MikrotikTestResult {
+                ok: true,
+                identity,
+                ros_version: version,
+                latency_ms: None,
+                error: None,
+            },
+            Err(e) => MikrotikTestResult {
+                ok: false,
+                identity: None,
+                ros_version: None,
+                latency_ms: None,
+                error: Some(e.to_string()),
+            },
+        }
+    }
+
     async fn connect_and_probe(
         &self,
         router: &MikrotikRouter,

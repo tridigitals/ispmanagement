@@ -109,6 +109,16 @@ export const mikrotik = {
       safeInvoke('delete_mikrotik_router', { token: getTokenOrThrow(), id }),
     test: (id: string): Promise<any> =>
       safeInvoke('test_mikrotik_router', { token: getTokenOrThrow(), id }),
+    adhocTest: (dto: {
+      host: string;
+      port?: number;
+      username: string;
+      password: string;
+    }): Promise<any> =>
+      safeInvoke('adhoc_test_mikrotik_connection', {
+        token: getTokenOrThrow(),
+        ...dto,
+      }),
     metrics: (routerId: string, limit?: number): Promise<any[]> =>
       safeInvoke('list_mikrotik_router_metrics', {
         token: getTokenOrThrow(),
