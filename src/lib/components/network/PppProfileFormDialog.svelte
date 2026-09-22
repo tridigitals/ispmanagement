@@ -18,6 +18,8 @@
     isEditing = false,
     profile = $bindable(),
     remotePoolOptions = [],
+    routers = [],
+    routerId = $bindable(''),
     onSubmit,
   } = $props<{
     show: boolean;
@@ -25,8 +27,14 @@
     isEditing: boolean;
     profile: PppProfileFormModel;
     remotePoolOptions: string[];
+    routers?: { id: string; name: string }[];
+    routerId?: string;
     onSubmit: () => void;
   }>();
+
+  /* Router dipilih di dalam dialog saat create (mode all-router).
+     Saat edit, router terkunci ke router milik row. */
+  const routerLocked = $derived(isEditing || routers.length === 0);
 </script>
 
 <Modal
@@ -43,6 +51,16 @@
       onSubmit();
     }}
   >
+    {#if routers.length > 0}
+      <label>
+        <span>{$t('admin.network.routers.ppp_profiles.form.router')}</span>
+        <select bind:value={routerId} disabled={loading || routerLocked}>
+          {#each routers as r (r.id)}
+            <option value={r.id}>{r.name}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
     <div class="grid two">
       <label>
         <span>{$t('admin.network.routers.ppp_profiles.columns.name')}</span>

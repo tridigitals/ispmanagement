@@ -20,6 +20,8 @@
     isEditing = false,
     pool = $bindable(),
     nextPoolOptions = [],
+    routers = [],
+    routerId = $bindable(''),
     onSubmit,
   } = $props<{
     show: boolean;
@@ -27,8 +29,14 @@
     isEditing: boolean;
     pool: IpPoolFormModel;
     nextPoolOptions: string[];
+    routers?: { id: string; name: string }[];
+    routerId?: string;
     onSubmit: () => void;
   }>();
+
+  /* Router dipilih di dalam dialog saat create (mode all-router).
+     Saat edit, router terkunci ke router milik row. */
+  const routerLocked = $derived(isEditing || routers.length === 0);
 
   let nextPoolState = $state<IpPoolNextPoolFieldState>({
     mode: 'select',
@@ -60,6 +68,16 @@
       submit();
     }}
   >
+    {#if routers.length > 0}
+      <label>
+        <span>{$t('admin.network.routers.ip_pools.form.router')}</span>
+        <select bind:value={routerId} disabled={loading || routerLocked}>
+          {#each routers as r (r.id)}
+            <option value={r.id}>{r.name}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
     <div class="grid two">
       <label>
         <span>{$t('admin.network.routers.ip_pools.columns.name')}</span>

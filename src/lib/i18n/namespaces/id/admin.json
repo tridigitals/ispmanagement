@@ -1875,7 +1875,8 @@
           "name_required": "Nama profil wajib diisi",
           "comment": "Komentar",
           "no_remote_pool": "Tanpa remote pool",
-          "only_one": "Izinkan hanya satu sesi"
+          "only_one": "Izinkan hanya satu sesi",
+          "router": "Router tujuan"
         },
         "delete": {
           "title": "Hapus Profil PPP",
@@ -1921,7 +1922,8 @@
           "router_note": "Perubahan akan diterapkan langsung ke router yang dipilih sebelum mirror lokal diperbarui.",
           "no_next_pool": "Tanpa next pool",
           "next_pool_manual": "Isi next pool manual",
-          "next_pool_manual_label": "Next pool manual"
+          "next_pool_manual_label": "Next pool manual",
+          "router": "Router tujuan"
         },
         "delete": {
           "title": "Hapus Pool IP",

@@ -226,12 +226,13 @@
   }
 
   function openCreate() {
-    const target = targetRouterId();
-    if (!target) {
+    if (routers.length === 0) {
       toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
-    routerId = target;
+    /* Default router: filter aktif → router terakhir dipakai → router pertama.
+       Bisa diganti di dalam dialog. */
+    if (!routerId) routerId = routerFilter || routers[0].id;
     editing = null;
     resetForm();
     showForm = true;
@@ -461,6 +462,8 @@
   isEditing={Boolean(editing)}
   bind:profile={form}
   remotePoolOptions={remotePoolOptions}
+  routers={routers}
+  bind:routerId
   onSubmit={() => void save()}
 />
 

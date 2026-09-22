@@ -2276,7 +2276,8 @@
           "name_required": "Profile name is required",
           "comment": "Comment",
           "no_remote_pool": "No remote pool",
-          "only_one": "Allow only one session"
+          "only_one": "Allow only one session",
+          "router": "Target router"
         },
         "delete": {
           "title": "Delete PPP Profile",
@@ -2322,7 +2323,8 @@
           "router_note": "Changes are applied directly to the selected router before the local mirror is refreshed.",
           "no_next_pool": "No next pool",
           "next_pool_manual": "Enter next pool manually",
-          "next_pool_manual_label": "Manual next pool"
+          "next_pool_manual_label": "Manual next pool",
+          "router": "Target router"
         },
         "delete": {
           "title": "Delete IP Pool",
