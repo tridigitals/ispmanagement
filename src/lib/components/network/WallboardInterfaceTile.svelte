@@ -282,6 +282,11 @@
         {#if hoverIdx != null}
           <div class="spark-crosshair" style={`--x:${((hoverIdx + 0.5) / Math.max(1, rx.length)) * 100}%`}></div>
         {/if}
+        {#if rx.length === 0}
+          <div class="spark-empty" role="status">
+            {$t('admin.network.wallboard.chart.waiting_metrics') || 'Menunggu data metrik…'}
+          </div>
+        {/if}
         {#each rx as v, i (i)}
           <div class="bar rx" class:active={hoverIdx === i} style={`height:${Math.round((v / max) * 100)}%;`} data-idx={i}></div>
         {/each}
@@ -304,6 +309,11 @@
         </div>
         {#if hoverIdx != null}
           <div class="spark-crosshair" style={`--x:${((hoverIdx + 0.5) / Math.max(1, tx.length)) * 100}%`}></div>
+        {/if}
+        {#if tx.length === 0}
+          <div class="spark-empty" role="status">
+            {$t('admin.network.wallboard.chart.waiting_metrics') || 'Menunggu data metrik…'}
+          </div>
         {/if}
         {#each tx as v, i (i)}
           <div class="bar tx" class:active={hoverIdx === i} style={`height:${Math.round((v / max) * 100)}%;`} data-idx={i}></div>
@@ -588,6 +598,25 @@
     border-radius: 4px 4px 1px 1px;
     min-height: 2px;
     transition: height 160ms linear, filter 0.2s ease, box-shadow 0.2s ease;
+  }
+  .spark-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding-top: 24px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: color-mix(in srgb, var(--text-primary) 45%, transparent);
+    animation: spark-empty-pulse 1.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes spark-empty-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spark-empty { animation: none; }
   }
   .bar.rx {
     background: linear-gradient(to top, #0e7490, #67e8f9);

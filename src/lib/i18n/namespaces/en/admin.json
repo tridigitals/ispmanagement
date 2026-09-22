@@ -1696,7 +1696,8 @@
       "status": {
         "ready": "Ready",
         "coming_soon": "Coming soon"
-      }
+      },
+      "soon_badge": "Soon"
     },
     "packages": {
       "title": "Packages",
@@ -2538,7 +2539,8 @@
         "peak": "RX Peak",
         "avg": "RX Avg",
         "peak_tx": "TX Peak",
-        "avg_tx": "TX Avg"
+        "avg_tx": "TX Avg",
+        "waiting_metrics": "Waiting for metrics…"
       },
       "slo": {
         "availability": "Availability",
@@ -2622,6 +2624,11 @@
         "rotate_every": "Rotate",
         "open": "Open settings",
         "title": "Wallboard Settings"
+      },
+      "legend": {
+        "online": "Online",
+        "offline": "Offline",
+        "title": "Router status"
       }
     },
     "noc": {

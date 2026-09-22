@@ -36,8 +36,10 @@
     Button,
     Card,
     DataTable,
+    EmptyState,
     Field,
     PageHeader,
+    TableSkeleton,
   } from '$lib/components/ds';
   import { t } from 'svelte-i18n';
 
@@ -285,10 +287,47 @@
     </div>
   </Card>
 
-  {#if routerId}
-    {#if rows.length === 0 && !loading}
-      <Card><p class="py-10 text-center text-sm text-ink-500">{ $t('network.ppp_profiles.v2.empty') }</p></Card>
+  {#if !routerId}
+    {#if loadingRouters}
+      <Card padded={false}><TableSkeleton rows={5} cols={7} /></Card>
+    {:else if routers.length === 0}
+      <Card>
+        <EmptyState
+          icon="server"
+          title={ $t('network.ppp_profiles.v2.no_routers_title') }
+          hint={ $t('network.ppp_profiles.v2.no_routers_hint') }
+        />
+        {#if canManage}
+          <div class="flex justify-center pb-6">
+            <Button variant="primary" icon="plus" href="/v2/admin/network/routers">{ $t('network.ppp_profiles.v2.go_routers') }</Button>
+          </div>
+        {/if}
+      </Card>
     {:else}
+      <Card>
+        <EmptyState
+          icon="server"
+          title={ $t('network.ppp_profiles.v2.pick_router_title') }
+          hint={ $t('network.ppp_profiles.v2.pick_router_hint') }
+        />
+      </Card>
+    {/if}
+  {:else if loading}
+    <Card padded={false}><TableSkeleton rows={8} cols={7} /></Card>
+  {:else if rows.length === 0}
+    <Card>
+      <EmptyState
+        icon="users"
+        title={ $t('network.ppp_profiles.v2.empty') }
+        hint={ $t('network.ppp_profiles.v2.empty_hint') }
+      />
+      {#if canManage}
+        <div class="flex justify-center pb-6">
+          <Button variant="primary" icon="plus" onclick={openCreate}>{ $t('network.ppp_profiles.v2.add') }</Button>
+        </div>
+      {/if}
+    </Card>
+  {:else}
     <Card title={ $t('network.ppp_profiles.v2.card_title', { values: { n: rows.length } }) }>
       <DataTable pageSize={25}
         {columns}
@@ -332,7 +371,6 @@
         {/snippet}
       </DataTable>
     </Card>
-    {/if}
   {/if}
 </AppShell>
 

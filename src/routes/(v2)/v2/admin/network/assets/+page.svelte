@@ -61,6 +61,8 @@
     StatTile,
   } from '$lib/components/ds';
   import type { Column } from '$lib/components/ds/table-types';
+  import { formatDateTime, timeAgo } from '$lib/utils/date';
+  import { appSettings } from '$lib/stores/settings';
   import { t } from 'svelte-i18n';
 
   type AssetDraft = {
@@ -368,7 +370,7 @@
         {:else if column.key === 'location_label'}
           <span class="text-sm text-ink-700">{buildNetworkAssetTopologyText(item, rows)}</span>
         {:else if column.key === 'updated_at'}
-          <span class="font-mono text-xs text-ink-500">{item.updated_at}</span>
+          <span class="text-xs text-ink-500" title={formatDateTime(item.updated_at, { timeZone: $appSettings.app_timezone })}>{timeAgo(item.updated_at, (k) => $t(k))}</span>
         {:else if column.key === 'actions'}
           {#if canManage}
             <RowActions

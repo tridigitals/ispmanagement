@@ -73,12 +73,13 @@
               <p class="mt-0.5 truncate text-sm text-ink-500">{source.description}</p>
             </div>
             <Button
-              variant="secondary"
+              variant={source.status === 'ready' ? 'primary' : 'secondary'}
               size="sm"
+              icon={source.status === 'ready' ? 'chevronRight' : undefined}
               onclick={() => goto(source.href)}
               disabled={source.status !== 'ready'}
             >
-              Buka wizard
+              {source.status === 'ready' ? $t('network.import_v2.open_wizard') : $t('network.import_v2.soon_badge')}
             </Button>
           </li>
         {/each}

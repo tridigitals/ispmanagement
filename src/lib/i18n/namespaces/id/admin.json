@@ -1296,7 +1296,8 @@
       "status": {
         "ready": "Siap",
         "coming_soon": "Segera hadir"
-      }
+      },
+      "soon_badge": "Segera"
     },
     "packages": {
       "title": "Paket",
@@ -2138,7 +2139,8 @@
         "peak": "Puncak RX",
         "avg": "Rata-rata RX",
         "peak_tx": "Puncak TX",
-        "avg_tx": "Rata-rata TX"
+        "avg_tx": "Rata-rata TX",
+        "waiting_metrics": "Menunggu data metrik…"
       },
       "slo": {
         "availability": "Ketersediaan",
@@ -2222,6 +2224,11 @@
         "rotate_every": "Interval",
         "open": "Buka pengaturan",
         "title": "Pengaturan Wallboard"
+      },
+      "legend": {
+        "online": "Online",
+        "offline": "Offline",
+        "title": "Status router"
       }
     },
     "noc": {

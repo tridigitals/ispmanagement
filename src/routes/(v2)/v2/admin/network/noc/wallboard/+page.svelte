@@ -1355,6 +1355,16 @@
       </div>
 
       <div class="toolbar-right">
+        <div class="wb-legend" title={ $t('admin.network.wallboard.legend.title') } role="status">
+          <span class="wb-legend-item">
+            <span class="wb-legend-dot on" aria-hidden="true"></span>
+            { $t('admin.network.wallboard.legend.online') }
+          </span>
+          <span class="wb-legend-item">
+            <span class="wb-legend-dot off" aria-hidden="true"></span>
+            { $t('admin.network.wallboard.legend.offline') }
+          </span>
+        </div>
         {#if pageTotals.any}
           <div class="wb-total" title={ $t('network.wb.total_rx') }>
             <span class="wb-total-k">RX</span>
@@ -1867,6 +1877,32 @@
     font-variant-numeric: tabular-nums;
     color: var(--text-secondary);
     letter-spacing: 0.03em;
+  }
+  .wb-legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .wb-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .wb-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+  .wb-legend-dot.on {
+    background: #34d399;
+    box-shadow: 0 0 4px 1px rgba(52, 211, 153, 0.5);
+  }
+  .wb-legend-dot.off {
+    background: transparent;
+    border: 1.5px solid rgba(248, 113, 113, 0.8);
   }
   /* Tile tambah compact: satu slot kecil, bukan placeholder selapuh layar. */
   .tile.add.add-compact {

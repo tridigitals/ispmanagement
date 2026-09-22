@@ -458,7 +458,15 @@
     "title": "RouterOS IP pools per router."
   },
   "ppp_profile": {
-    "title": "RouterOS PPP profiles per router."
+    "title": "RouterOS PPP profiles per router.",
+    "v2": {
+      "no_routers_title": "No routers connected yet",
+      "no_routers_hint": "Add a MikroTik router first to start syncing PPP profiles.",
+      "go_routers": "Go to Routers",
+      "pick_router_title": "Pick a router to view PPP profiles",
+      "pick_router_hint": "PPP profiles are shown per router. Pick a router in the panel above, or sync profiles from the router.",
+      "empty_hint": "Profiles from this router will appear here once synced, or create a new speed profile manually."
+    }
   },
   "pppoe": {
     "title": "Manage PPPoE accounts.",
@@ -610,7 +618,13 @@
       "t_dep_fail": "Dependency check failed.",
       "t_del_warn": "Pool {n} deleted with {c} warning references.",
       "t_gone": "Pool already gone on the router — list refreshed.",
-      "t_deleted": "IP pool deleted."
+      "t_deleted": "IP pool deleted.",
+      "no_routers_title": "No routers connected yet",
+      "no_routers_hint": "Add a MikroTik router first to start syncing IP pools.",
+      "go_routers": "Go to Routers",
+      "pick_router_title": "Pick a router to view IP pools",
+      "pick_router_hint": "IP pools are shown per router. Pick a router in the panel above, or sync pools from the router.",
+      "empty_pool_hint": "IP pools from this router will appear here once synced, or add a new pool manually."
     }
   },
   "ppp_profiles": {
@@ -659,7 +673,9 @@
     "sources": "Import sources",
     "pick_hint": "Pick a source to open its import wizard.",
     "ready": "Ready",
-    "soon": "Soon"
+    "soon": "Soon",
+    "open_wizard": "Open wizard",
+    "soon_badge": "Soon"
   },
   "wallboard_set": {
     "title": "Wallboard settings",

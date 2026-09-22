@@ -288,7 +288,7 @@
   </PageHeader>
 
   <Card title={ $t('admin.network.logs.v2.filter') }>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       <Field id="lg-router" label={ $t('admin.network.logs.filters.router') } type="select" stacked value={routerId} options={routerOptions} onchange={(v) => { routerId = v; void loadRowsPage(1); }} />
       <Field id="lg-level" label={ $t('admin.network.logs.filters.level') } type="select" stacked value={level} options={levelOptions} onchange={(v) => { level = v; void loadRowsPage(1); }} />
       <Field id="lg-topic" label={ $t('admin.network.logs.filters.topic') } type="text" stacked value={topic} onchange={onTopicInput} placeholder="system,error,interface…" />

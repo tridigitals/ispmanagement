@@ -1662,7 +1662,8 @@
           "peak": "Puncak RX",
           "avg": "Rata-rata RX",
           "peak_tx": "Puncak TX",
-          "avg_tx": "Rata-rata TX"
+          "avg_tx": "Rata-rata TX",
+          "waiting_metrics": "Menunggu data metrik…"
         },
         "slo": {
           "availability": "Ketersediaan",
@@ -1746,6 +1747,11 @@
           "rotate_every": "Interval",
           "open": "Buka pengaturan",
           "title": "Pengaturan Wallboard"
+        },
+        "legend": {
+          "online": "Online",
+          "offline": "Offline",
+          "title": "Status router"
         }
       },
       "noc": {
@@ -4787,6 +4793,30 @@
       "kbps": "Kbps",
       "mbps": "Mbps",
       "gbps": "Gbps"
+    },
+    "ip_pools": {
+      "v2": {
+        "no_routers_title": "Belum ada router terhubung",
+        "no_routers_hint": "Tambahkan router MikroTik terlebih dahulu untuk mulai sinkronisasi pool IP.",
+        "go_routers": "Ke halaman Router",
+        "pick_router_title": "Pilih router untuk melihat pool IP",
+        "pick_router_hint": "Pool IP ditampilkan per router. Pilih router di panel atas, atau sinkronkan pool dari router.",
+        "empty_pool_hint": "Pool IP dari router ini akan muncul di sini setelah disinkronkan, atau tambahkan pool baru secara manual."
+      }
+    },
+    "ppp_profiles": {
+      "v2": {
+        "no_routers_title": "Belum ada router terhubung",
+        "no_routers_hint": "Tambahkan router MikroTik terlebih dahulu untuk mulai sinkronisasi profil PPP.",
+        "go_routers": "Ke halaman Router",
+        "pick_router_title": "Pilih router untuk melihat profil PPP",
+        "pick_router_hint": "Profil PPP ditampilkan per router. Pilih router di panel atas, atau sinkronkan profil dari router.",
+        "empty_hint": "Profil dari router ini akan muncul di sini setelah disinkronkan, atau buat profil kecepatan baru secara manual."
+      }
+    },
+    "import_v2": {
+      "open_wizard": "Buka wizard",
+      "soon_badge": "Segera"
     }
   },
   "notifications": {

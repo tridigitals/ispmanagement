@@ -1935,7 +1935,8 @@
           "peak": "RX Peak",
           "avg": "RX Avg",
           "peak_tx": "TX Peak",
-          "avg_tx": "TX Avg"
+          "avg_tx": "TX Avg",
+          "waiting_metrics": "Waiting for metrics…"
         },
         "slo": {
           "availability": "Availability",
@@ -2019,6 +2020,11 @@
           "rotate_every": "Rotate",
           "open": "Open settings",
           "title": "Wallboard Settings"
+        },
+        "legend": {
+          "online": "Online",
+          "offline": "Offline",
+          "title": "Router status"
         }
       },
       "noc": {
@@ -4787,6 +4793,30 @@
       "kbps": "Kbps",
       "mbps": "Mbps",
       "gbps": "Gbps"
+    },
+    "ip_pools": {
+      "v2": {
+        "no_routers_title": "No routers connected yet",
+        "no_routers_hint": "Add a MikroTik router first to start syncing IP pools.",
+        "go_routers": "Go to Routers",
+        "pick_router_title": "Pick a router to view IP pools",
+        "pick_router_hint": "IP pools are shown per router. Pick a router in the panel above, or sync pools from the router.",
+        "empty_pool_hint": "IP pools from this router will appear here once synced, or add a new pool manually."
+      }
+    },
+    "ppp_profiles": {
+      "v2": {
+        "no_routers_title": "No routers connected yet",
+        "no_routers_hint": "Add a MikroTik router first to start syncing PPP profiles.",
+        "go_routers": "Go to Routers",
+        "pick_router_title": "Pick a router to view PPP profiles",
+        "pick_router_hint": "PPP profiles are shown per router. Pick a router in the panel above, or sync profiles from the router.",
+        "empty_hint": "Profiles from this router will appear here once synced, or create a new speed profile manually."
+      }
+    },
+    "import_v2": {
+      "open_wizard": "Open wizard",
+      "soon_badge": "Soon"
     }
   },
   "notifications": {

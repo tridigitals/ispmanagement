@@ -458,7 +458,15 @@
     "title": "IP pool RouterOS per router."
   },
   "ppp_profile": {
-    "title": "PPP profile RouterOS per router."
+    "title": "PPP profile RouterOS per router.",
+    "v2": {
+      "no_routers_title": "Belum ada router terhubung",
+      "no_routers_hint": "Tambahkan router MikroTik terlebih dahulu untuk mulai sinkronisasi profil PPP.",
+      "go_routers": "Ke halaman Router",
+      "pick_router_title": "Pilih router untuk melihat profil PPP",
+      "pick_router_hint": "Profil PPP ditampilkan per router. Pilih router di panel atas, atau sinkronkan profil dari router.",
+      "empty_hint": "Profil dari router ini akan muncul di sini setelah disinkronkan, atau buat profil kecepatan baru secara manual."
+    }
   },
   "pppoe": {
     "title": "Kelola akun PPPoE.",
@@ -610,7 +618,13 @@
       "t_dep_fail": "Gagal cek dependensi.",
       "t_del_warn": "Pool {n} dihapus dengan {c} referensi peringatan.",
       "t_gone": "Pool sudah hilang di router — daftar disegarkan.",
-      "t_deleted": "Pool IP dihapus."
+      "t_deleted": "Pool IP dihapus.",
+      "no_routers_title": "Belum ada router terhubung",
+      "no_routers_hint": "Tambahkan router MikroTik terlebih dahulu untuk mulai sinkronisasi pool IP.",
+      "go_routers": "Ke halaman Router",
+      "pick_router_title": "Pilih router untuk melihat pool IP",
+      "pick_router_hint": "Pool IP ditampilkan per router. Pilih router di panel atas, atau sinkronkan pool dari router.",
+      "empty_pool_hint": "Pool IP dari router ini akan muncul di sini setelah disinkronkan, atau tambahkan pool baru secara manual."
     }
   },
   "ppp_profiles": {
@@ -659,7 +673,9 @@
     "sources": "Sumber impor",
     "pick_hint": "Pilih sumber untuk membuka wizard impornya.",
     "ready": "Siap",
-    "soon": "Segera"
+    "soon": "Segera",
+    "open_wizard": "Buka wizard",
+    "soon_badge": "Segera"
   },
   "wallboard_set": {
     "title": "Pengaturan wallboard",
