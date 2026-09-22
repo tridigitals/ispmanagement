@@ -59,6 +59,15 @@ export const V2_MIGRATED: readonly string[] = [
   '/admin/subscription',
   '/admin/network/incidents',
   '/admin/network/installations',
+  '/admin/network/noc/wallboard',
+  '/admin/network/alerts',
+  '/admin/network/logs',
+  '/admin/network/ppp-profiles',
+  '/admin/network/ip-pools',
+  '/admin/network/assets',
+  '/admin/network/import',
+  '/admin/message-templates',
+  '/admin/storage',
 ];
 
 /** Ubah href legacy ke padanan v2 bila halaman itu sudah dimigrasi. */
@@ -121,6 +130,18 @@ export function buildAdminNav(
         ...(canAccessNetworkMap(can)
           ? [{ label: 'Topologi', icon: 'map' as const, href: '/admin/network/map' }]
           : []),
+        ...(can('read', 'network_noc')
+          ? [
+              {
+                label: 'Wallboard',
+                icon: 'monitor' as const,
+                href: '/admin/network/noc/wallboard',
+              },
+            ]
+          : []),
+        ...(can('read', 'network_alerts')
+          ? [{ label: 'Alert', icon: 'alert' as const, href: '/admin/network/alerts' }]
+          : []),
         ...(can('read', 'network_incidents')
           ? [
               {
@@ -131,12 +152,27 @@ export function buildAdminNav(
               },
             ]
           : []),
+        ...(can('read', 'network_logs')
+          ? [{ label: 'Log', icon: 'grid' as const, href: '/admin/network/logs' }]
+          : []),
         ...(pppoe ? [{ label: 'PPPoE', icon: 'key' as const, href: '/admin/network/pppoe' }] : []),
+        ...(can('read', 'ppp_profiles')
+          ? [{ label: 'Profil PPP', icon: 'key' as const, href: '/admin/network/ppp-profiles' }]
+          : []),
+        ...(can('read', 'ip_pools')
+          ? [{ label: 'Pool IP', icon: 'database' as const, href: '/admin/network/ip-pools' }]
+          : []),
         ...(can('read', 'router_inventory')
           ? [{ label: 'Router', icon: 'router' as const, href: '/admin/network/routers' }]
           : []),
         ...(pppoe ? [{ label: 'OLT', icon: 'radio' as const, href: '/admin/network/olts' }] : []),
         ...(dhcp ? [{ label: 'DHCP Static', icon: 'server' as const, href: '/admin/network/dhcp-static' }] : []),
+        ...(can('read', 'ftth_assets')
+          ? [{ label: 'Aset FTTH', icon: 'box' as const, href: '/admin/network/assets' }]
+          : []),
+        ...(pppoe
+          ? [{ label: 'Import', icon: 'download' as const, href: '/admin/network/import' }]
+          : []),
       ],
     },
     {
@@ -181,6 +217,18 @@ export function buildAdminNav(
           : []),
         ...(can('read', 'email_outbox')
           ? [{ label: 'Email Outbox', icon: 'mail' as const, href: '/admin/email-outbox' }]
+          : []),
+        ...(can('read', 'communication_templates')
+          ? [
+              {
+                label: 'Template Pesan',
+                icon: 'inbox' as const,
+                href: '/admin/message-templates',
+              },
+            ]
+          : []),
+        ...(can('read', 'storage_console')
+          ? [{ label: 'Storage', icon: 'folder' as const, href: '/admin/storage' }]
           : []),
       ],
     },

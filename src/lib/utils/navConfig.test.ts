@@ -106,6 +106,13 @@ describe('pemetaan href v2 selama migrasi bertahap', () => {
     'manage:isp_packages',
     'read:email_outbox',
     'read:dhcp_static',
+    'read:network_alerts',
+    'read:network_logs',
+    'read:ppp_profiles',
+    'read:ip_pools',
+    'read:ftth_assets',
+    'read:communication_templates',
+    'read:storage_console',
   );
 
   it('mengarahkan halaman yang sudah dimigrasi ke /v2 saat opsi v2 aktif', () => {
