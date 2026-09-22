@@ -624,7 +624,11 @@
       "go_routers": "Go to Routers",
       "pick_router_title": "Pick a router to view IP pools",
       "pick_router_hint": "IP pools are shown per router. Pick a router in the panel above, or sync pools from the router.",
-      "empty_pool_hint": "IP pools from this router will appear here once synced, or add a new pool manually."
+      "empty_pool_hint": "IP pools from this router will appear here once synced, or add a new pool manually.",
+      "col_router": "Router",
+      "all_routers": "All routers ({n})",
+      "t_load_partial": "Some routers failed to load: {ok} OK, {failed} failed.",
+      "t_sync_partial": "Sync partially done: {ok} OK, {failed} failed."
     }
   },
   "ppp_profiles": {
@@ -665,7 +669,11 @@
       "go_routers": "Go to Routers",
       "pick_router_title": "Pick a router to view PPP profiles",
       "pick_router_hint": "PPP profiles are shown per router. Pick a router in the panel above, or sync profiles from the router.",
-      "empty_hint": "Profiles from this router will appear here once synced, or create a new speed profile manually."
+      "empty_hint": "Profiles from this router will appear here once synced, or create a new speed profile manually.",
+      "col_router": "Router",
+      "all_routers": "All routers ({n})",
+      "t_load_partial": "Some routers failed to load: {ok} OK, {failed} failed.",
+      "t_sync_partial": "Sync partially done: {ok} OK, {failed} failed."
     }
   },
   "import_v2": {

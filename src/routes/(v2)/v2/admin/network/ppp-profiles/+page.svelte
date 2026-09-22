@@ -18,7 +18,6 @@
     type PppProfileFormModel,
   } from '$lib/components/network/PppProfileFormDialog.svelte';
   import {
-    getPppProfileCrudGateState,
     getPppProfileDeleteState,
     getPppProfileMutationErrorState,
     getPppProfileOnlyOneState,
@@ -37,7 +36,6 @@
     Card,
     DataTable,
     EmptyState,
-    Field,
     PageHeader,
     TableSkeleton,
   } from '$lib/components/ds';
@@ -53,19 +51,23 @@
     dns_server?: string | null;
     comment?: string | null;
     only_one?: boolean | null;
+    router_id?: string | null;
     router_present: boolean;
     last_sync_at?: string | null;
   };
-  type IpPoolRow = { id: string; name: string };
+  type IpPoolRow = { id: string; name: string; router_id?: string | null };
 
   let loadingRouters = $state(true);
   let routers = $state<RouterRow[]>([]);
   let routerId = $state('');
+  /* Default all-router (paritas PPPoE v2): '' = semua router tampil. */
+  let routerFilter = $state('');
 
   let loading = $state(false);
   let saving = $state(false);
   let deleting = $state(false);
-  let rows = $state<PppProfileRow[]>([]);
+  let syncingAll = $state(false);
+  let allRows = $state<PppProfileRow[]>([]);
   let ipPools = $state<IpPoolRow[]>([]);
   let showForm = $state(false);
   let editing = $state<PppProfileRow | null>(null);
@@ -80,15 +82,31 @@
 
   const remotePoolOptions = $derived.by(() => getPppProfileRemotePoolOptions(ipPools));
 
+  /* Nama router per id — untuk kolom Router saat mode all-router. */
+  const routerNameById = $derived(new Map(routers.map((r) => [r.id, r.name])));
+
+  /* Filter client-side ala PPPoE v2: '' = semua router. */
+  const rows = $derived(
+    routerFilter ? allRows.filter((r) => r.router_id === routerFilter) : allRows,
+  );
+
+  /* Hitung profil per router untuk option count di dropdown filter. */
+  const routerCountById = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const r of allRows) {
+      if (r.router_id) m.set(r.router_id, (m.get(r.router_id) ?? 0) + 1);
+    }
+    return m;
+  });
+
   const columns = $derived<Column[]>([
     { key: 'name', label: $t('network.ppp_profiles.v2.col_name') },
-    { key: 'local', label: $t('network.ppp_profiles.v2.col_local') },
-    { key: 'remote', label: 'Remote' },
     { key: 'rate', label: $t('network.ppp_profiles.v2.col_rate') },
-    { key: 'dns', label: 'DNS' },
-    { key: 'only_one', label: 'Only-one' },
+    { key: 'remote', label: 'Remote', hideSm: true },
+    { key: 'dns', label: 'DNS', hideSm: true },
+    { key: 'router', label: $t('network.ppp_profiles.v2.col_router'), hideSm: true },
+    { key: 'only_one', label: 'Only-one', hideSm: true },
     { key: 'state', label: 'State' },
-    { key: 'synced', label: $t('network.ppp_profiles.v2.col_synced') },
     { key: 'actions', label: $t('network.ppp_profiles.v2.col_actions') },
   ]);
 
@@ -106,7 +124,7 @@
     loadingRouters = true;
     try {
       routers = (await api.mikrotik.routers.list()) as any;
-      if (routerId) await load();
+      await loadAll();
     } catch (e) {
       toast.error(extractApiErrorMessage(e) || $t('network.ppp_profiles.v2.t_load_routers'));
     } finally {
@@ -114,33 +132,85 @@
     }
   }
 
-  async function load() {
-    if (!routerId || loading) return;
+  /* Muat profil + pool dari SEMUA router (mirror DB, 1 request/router/router). */
+  async function loadAll() {
+    if (loading) return;
+    if (routers.length === 0) {
+      allRows = [];
+      ipPools = [];
+      return;
+    }
     loading = true;
     try {
-      const [profileRows, poolRows] = await Promise.all([
-        api.mikrotik.routers.pppProfiles(routerId),
-        api.mikrotik.routers.ipPools(routerId),
+      const [profileResults, poolResults] = await Promise.all([
+        Promise.allSettled(routers.map((r) => api.mikrotik.routers.pppProfiles(r.id))),
+        Promise.allSettled(routers.map((r) => api.mikrotik.routers.ipPools(r.id))),
       ]);
-      rows = profileRows as any;
-      ipPools = poolRows as any;
-    } catch (e) {
-      toast.error(extractApiErrorMessage(e) || $t('network.ppp_profiles.v2.t_load_profiles'));
+      const merged: PppProfileRow[] = [];
+      let failed = 0;
+      for (let i = 0; i < profileResults.length; i++) {
+        const res = profileResults[i];
+        if (res.status === 'fulfilled') {
+          for (const row of res.value as PppProfileRow[]) {
+            merged.push({ ...row, router_id: row.router_id || routers[i].id });
+          }
+        } else {
+          failed++;
+        }
+      }
+      allRows = merged;
+      const pools: IpPoolRow[] = [];
+      for (let i = 0; i < poolResults.length; i++) {
+        const res = poolResults[i];
+        if (res.status === 'fulfilled') {
+          for (const row of res.value as IpPoolRow[]) {
+            pools.push({ ...row, id: row.id, router_id: (row as any).router_id || routers[i].id });
+          }
+        }
+      }
+      ipPools = pools;
+      if (failed > 0) {
+        toast.warning(
+          $t('network.ppp_profiles.v2.t_load_partial', { values: { ok: routers.length - failed, failed } }),
+        );
+      }
     } finally {
       loading = false;
     }
   }
 
+  async function load() {
+    /* Kompatibilitas panggilan lama (setelah create/edit/delete) —
+       sekarang selalu muat ulang seluruh tenant. */
+    await loadAll();
+  }
+
   async function sync() {
-    if (!routerId || loading) return;
+    /* Sinkron router terpilih; di mode all-router tanpa filter, sinkron semua. */
+    const targets = routerFilter ? [routerFilter] : routers.map((r) => r.id);
+    if (targets.length === 0 || loading) return;
     loading = true;
     try {
-      rows = (await api.mikrotik.routers.syncPppProfiles(routerId)) as any;
-      ipPools = (await api.mikrotik.routers.ipPools(routerId)) as any;
-      toast.success($t('network.ppp_profiles.v2.t_synced'));
+      if (targets.length === 1) {
+        await api.mikrotik.routers.syncPppProfiles(targets[0]);
+        toast.success($t('network.ppp_profiles.v2.t_synced'));
+      } else {
+        syncingAll = true;
+        const results = await Promise.allSettled(
+          targets.map((rid) => api.mikrotik.routers.syncPppProfiles(rid)),
+        );
+        const failed = results.filter((r) => r.status === 'rejected').length;
+        if (failed === 0) toast.success($t('network.ppp_profiles.v2.t_synced'));
+        else
+          toast.warning(
+            $t('network.ppp_profiles.v2.t_sync_partial', { values: { ok: targets.length - failed, failed } }),
+          );
+      }
+      await loadAll();
     } catch (e) {
       toast.error(extractApiErrorMessage(e) || $t('network.ppp_profiles.v2.t_sync_fail'));
     } finally {
+      syncingAll = false;
       loading = false;
     }
   }
@@ -149,21 +219,31 @@
     form = { name: '', local_address: '', remote_address: '', rate_limit: '', dns_server: '', comment: '', only_one: false };
   }
 
+    /* Router target CRUD: mode all-router → pakai router milik row yang diedit.
+     CRUD tetap per-router di backend. */
+  function targetRouterId(row?: PppProfileRow | null): string {
+    return routerFilter || row?.router_id || routerId || '';
+  }
+
   function openCreate() {
-    if (getPppProfileCrudGateState(routerId).blocked) {
+    const target = targetRouterId();
+    if (!target) {
       toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
+    routerId = target;
     editing = null;
     resetForm();
     showForm = true;
   }
 
   function openEdit(row: PppProfileRow) {
-    if (getPppProfileCrudGateState(routerId).blocked) {
+    const target = targetRouterId(row);
+    if (!target) {
       toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
+    routerId = target;
     editing = row;
     form = {
       name: row.name || '',
@@ -207,12 +287,14 @@
   }
 
   async function openDelete(row: PppProfileRow) {
-    if (!routerId) {
+    const target = targetRouterId(row);
+    if (!target) {
       toast.error($t('network.ppp_profiles.v2.pick_router_first'));
       return;
     }
+    routerId = target;
     try {
-      const dependency = await api.mikrotik.routers.pppProfileDependencies(routerId, row.id);
+      const dependency = await api.mikrotik.routers.pppProfileDependencies(target, row.id);
       const counts = Object.fromEntries((dependency.dependencies || []).map((item: any) => [item.type, item.count]));
       const state = getPppProfileDeleteState(counts as any);
       deleteTarget = row;
@@ -245,8 +327,8 @@
       const message = extractApiErrorMessage(error) || $t('network.ppp_profiles.v2.t_del_fail');
       if (isPppProfileStaleTargetConflict(message)) {
         try {
-          rows = (await api.mikrotik.routers.syncPppProfiles(routerId)) as any;
-          ipPools = (await api.mikrotik.routers.ipPools(routerId)) as any;
+          await api.mikrotik.routers.syncPppProfiles(routerId);
+          await api.mikrotik.routers.ipPools(routerId);
           showDelete = false;
           deleteTarget = null;
           deleteMessage = '';
@@ -273,48 +355,45 @@
     desc={ $t('network.ppp_profiles.v2.desc') }
   >
     {#snippet actions()}
-      <Button variant="ghost" icon="refresh" onclick={() => void load()} disabled={!routerId || loading}>{ $t('common.refresh') }</Button>
-      <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={!routerId || loading}>{ $t('network.ppp_profiles.v2.sync') }</Button>
+      <Button variant="ghost" icon="refresh" onclick={() => void loadAll()} disabled={loading}>{ $t('common.refresh') }</Button>
+      <Button variant="ghost" icon="download" onclick={() => void sync()} disabled={loading} loading={syncingAll}>{ $t('network.ppp_profiles.v2.sync') }</Button>
       {#if canManage}
-        <Button variant="primary" icon="plus" onclick={openCreate} disabled={!routerId || loading}>{ $t('network.ppp_profiles.v2.add') }</Button>
+        <Button variant="primary" icon="plus" onclick={openCreate} disabled={loading || routers.length === 0}>{ $t('network.ppp_profiles.v2.add') }</Button>
       {/if}
     {/snippet}
   </PageHeader>
 
-  <Card title={ $t('network.ppp_profiles.v2.router') }>
-    <div class="max-w-md">
-      <Field stacked id="pp-router" label={ $t('network.ppp_profiles.v2.router') } type="select" value={routerId} options={[{ value: '', label: $t('network.ppp_profiles.v2.pick_router') }, ...routers.map((r) => ({ value: r.id, label: r.name }))]} onchange={(v) => { routerId = v; void load(); }} />
+  {#if routers.length > 0}
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <select
+        bind:value={routerFilter}
+        aria-label={ $t('network.ppp_profiles.v2.router') }
+        class="h-9 rounded-lg bg-white px-3 text-sm text-ink-900 ring-1 ring-inset ring-ink-200 focus:ring-brand-600 focus:outline-none"
+      >
+        <option value="">{ $t('network.ppp_profiles.v2.all_routers', { values: { n: allRows.length } }) }</option>
+        {#each routers as r (r.id)}
+          <option value={r.id}>{r.name} ({routerCountById.get(r.id) ?? 0})</option>
+        {/each}
+      </select>
     </div>
-  </Card>
+  {/if}
 
-  {#if !routerId}
-    {#if loadingRouters}
-      <Card padded={false}><TableSkeleton rows={5} cols={7} /></Card>
-    {:else if routers.length === 0}
-      <Card>
-        <EmptyState
-          icon="server"
-          title={ $t('network.ppp_profiles.v2.no_routers_title') }
-          hint={ $t('network.ppp_profiles.v2.no_routers_hint') }
-        />
-        {#if canManage}
-          <div class="flex justify-center pb-6">
-            <Button variant="primary" icon="plus" href="/v2/admin/network/routers">{ $t('network.ppp_profiles.v2.go_routers') }</Button>
-          </div>
-        {/if}
-      </Card>
-    {:else}
-      <Card>
-        <EmptyState
-          icon="server"
-          title={ $t('network.ppp_profiles.v2.pick_router_title') }
-          hint={ $t('network.ppp_profiles.v2.pick_router_hint') }
-        />
-      </Card>
-    {/if}
-  {:else if loading}
-    <Card padded={false}><TableSkeleton rows={8} cols={7} /></Card>
-  {:else if rows.length === 0}
+  {#if loadingRouters}
+    <Card padded={false}><TableSkeleton rows={5} cols={7} /></Card>
+  {:else if routers.length === 0}
+    <Card>
+      <EmptyState
+        icon="server"
+        title={ $t('network.ppp_profiles.v2.no_routers_title') }
+        hint={ $t('network.ppp_profiles.v2.no_routers_hint') }
+      />
+      {#if canManage}
+        <div class="flex justify-center pb-6">
+          <Button variant="primary" icon="plus" href="/v2/admin/network/routers">{ $t('network.ppp_profiles.v2.go_routers') }</Button>
+        </div>
+      {/if}
+    </Card>
+  {:else if !loading && rows.length === 0}
     <Card>
       <EmptyState
         icon="users"
@@ -334,10 +413,10 @@
         rows={rows.map((r, idx) => ({
           id: r.id || `${r.name}:${idx}`,
           name: r.name,
-          local: r.local_address || '—',
           remote: r.remote_address || '—',
           rate: r.rate_limit || '—',
           dns: r.dns_server || '—',
+          router: r.router_id ? (routerNameById.get(r.router_id) ?? r.router_id) : '—',
           only_one: getPppProfileOnlyOneState(r.only_one).enabled,
           state: Boolean(r.router_present),
           synced: r.last_sync_at,
@@ -348,6 +427,8 @@
           {@const cellVal = (row as unknown as Record<string, unknown>)[col.key] as string}
           {#if col.key === 'state'}
             <Badge tone={row.state ? 'positive' : 'warning'} label={row.state ? $t('network.ppp_profiles.v2.state_present') : $t('network.ppp_profiles.v2.state_missing')} />
+          {:else if col.key === 'router'}
+            <span class="text-xs text-ink-500">{cellVal}</span>
           {:else if col.key === 'only_one'}
             <Badge tone={row.only_one ? 'positive' : 'neutral'} label={row.only_one ? $t('common.yes') : $t('common.no')} />
           {:else if col.key === 'synced'}
@@ -363,7 +444,7 @@
                 <Button variant="ghost" onclick={() => void openDelete(rows.find((r) => (r.id || r.name) === row.id) ?? rows[0])}>{ $t('network.ppp_profiles.v2.delete') }</Button>
               </div>
             {/if}
-          {:else if col.key === 'local' || col.key === 'remote' || col.key === 'rate' || col.key === 'dns'}
+          {:else if col.key === 'remote' || col.key === 'rate' || col.key === 'dns'}
             <span class="font-mono text-xs">{cellVal}</span>
           {:else}
             <span class="text-sm font-medium">{cellVal}</span>

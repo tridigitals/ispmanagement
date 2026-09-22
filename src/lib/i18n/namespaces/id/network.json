@@ -624,7 +624,11 @@
       "go_routers": "Ke halaman Router",
       "pick_router_title": "Pilih router untuk melihat pool IP",
       "pick_router_hint": "Pool IP ditampilkan per router. Pilih router di panel atas, atau sinkronkan pool dari router.",
-      "empty_pool_hint": "Pool IP dari router ini akan muncul di sini setelah disinkronkan, atau tambahkan pool baru secara manual."
+      "empty_pool_hint": "Pool IP dari router ini akan muncul di sini setelah disinkronkan, atau tambahkan pool baru secara manual.",
+      "col_router": "Router",
+      "all_routers": "Semua router ({n})",
+      "t_load_partial": "Sebagian router gagal dimuat: {ok} OK, {failed} gagal.",
+      "t_sync_partial": "Sinkron selesai sebagian: {ok} OK, {failed} gagal."
     }
   },
   "ppp_profiles": {
@@ -665,7 +669,11 @@
       "go_routers": "Ke halaman Router",
       "pick_router_title": "Pilih router untuk melihat profil PPP",
       "pick_router_hint": "Profil PPP ditampilkan per router. Pilih router di panel atas, atau sinkronkan profil dari router.",
-      "empty_hint": "Profil dari router ini akan muncul di sini setelah disinkronkan, atau buat profil kecepatan baru secara manual."
+      "empty_hint": "Profil dari router ini akan muncul di sini setelah disinkronkan, atau buat profil kecepatan baru secara manual.",
+      "col_router": "Router",
+      "all_routers": "Semua router ({n})",
+      "t_load_partial": "Sebagian router gagal dimuat: {ok} OK, {failed} gagal.",
+      "t_sync_partial": "Sinkron selesai sebagian: {ok} OK, {failed} gagal."
     }
   },
   "import_v2": {
