@@ -860,7 +860,8 @@
           "create_failed": "Customer created, but failed to create portal login account.",
           "create_failed_atomic": "Failed to create portal login account. Customer creation was rolled back.",
           "create_failed_with_rollback": "Failed to create portal login account and failed to rollback customer creation."
-        }
+        },
+        "subtitle": "Jika aktif, customer langsung dibuatkan akun login dashboard."
       }
     },
     "delete": {
@@ -2446,6 +2447,43 @@
         "foot_poller": "{shown} of {total} routers · backend poller runs every {m} minutes",
         "hint_monitored": "of {total} registered routers",
         "hint_disabled": "{d} disabled · {s} stale data"
+      },
+      "wizard": {
+        "title": "Add Router",
+        "step1": "Credentials",
+        "step2": "Location",
+        "step3": "Import",
+        "step4": "Finish",
+        "test": "Test Connection",
+        "testing": "Testing…",
+        "err_required": "Host and username are required.",
+        "err_conn": "Connection failed. Check host, port, and credentials.",
+        "conn_ok": "Connection OK",
+        "location_hint": "Optional — coordinates power the NOC map. You can fill this later.",
+        "include_disabled": "Include disabled secrets",
+        "loading": "Reading PPPoE secrets from router…",
+        "no_secrets": "No PPPoE secrets on this router (or click Reload).",
+        "load_preview": "Reload",
+        "select_all": "Select all changed",
+        "select_none": "Deselect all",
+        "import_note": "The router is saved first; selected PPPoE accounts are imported automatically afterwards.",
+        "import_done": "PPPoE accounts imported.",
+        "finish": "Save Router",
+        "summary_router": "Router",
+        "summary_host": "Host",
+        "summary_identity": "Identity",
+        "summary_import": "PPPoE accounts to import",
+        "summary_status": "Status",
+        "tab_plans": "Profiles & Pools → Plans",
+        "tab_accounts": "PPPoE accounts",
+        "no_profiles": "No PPP profiles available to turn into plans.",
+        "plans_hint": "Selected profiles will be created as packages (plans) at price 0 — set prices later in Packages. Pool is optional for mapping.",
+        "pools_found": "pools found",
+        "plan_exists": "plan exists",
+        "plan_new": "new plan",
+        "summary_plans": "Plans to create",
+        "plans_done": "Plans created from profiles: {n}",
+        "plans_skip": "Profiles skipped — no plans created."
       }
     },
     "wallboard": {

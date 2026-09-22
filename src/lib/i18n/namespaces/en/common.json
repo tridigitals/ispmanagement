@@ -180,5 +180,6 @@
   "components": {
     "save_bar": {}
   },
-  "uploading": "Uploading…"
+  "uploading": "Uploading…",
+  "ok": "OK"
 }

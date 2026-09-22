@@ -659,7 +659,13 @@
       "t_del_fail": "Gagal hapus.",
       "t_gone": "Profil sudah hilang di router — daftar disegarkan.",
       "del_block": "Tidak bisa hapus {n} — masih dipakai {d} data.",
-      "del_msg": "Hapus profil PPP {n} dari router?"
+      "del_msg": "Hapus profil PPP {n} dari router?",
+      "no_routers_title": "Belum ada router terhubung",
+      "no_routers_hint": "Tambahkan router MikroTik terlebih dahulu untuk mulai sinkronisasi profil PPP.",
+      "go_routers": "Ke halaman Router",
+      "pick_router_title": "Pilih router untuk melihat profil PPP",
+      "pick_router_hint": "Profil PPP ditampilkan per router. Pilih router di panel atas, atau sinkronkan profil dari router.",
+      "empty_hint": "Profil dari router ini akan muncul di sini setelah disinkronkan, atau buat profil kecepatan baru secara manual."
     }
   },
   "import_v2": {

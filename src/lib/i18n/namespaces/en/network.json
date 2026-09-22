@@ -659,7 +659,13 @@
       "t_del_fail": "Delete failed.",
       "t_gone": "Profile already gone on the router — list refreshed.",
       "del_block": "Cannot delete {n} — still referenced by {d} records.",
-      "del_msg": "Delete PPP profile {n} from the router?"
+      "del_msg": "Delete PPP profile {n} from the router?",
+      "no_routers_title": "No routers connected yet",
+      "no_routers_hint": "Add a MikroTik router first to start syncing PPP profiles.",
+      "go_routers": "Go to Routers",
+      "pick_router_title": "Pick a router to view PPP profiles",
+      "pick_router_hint": "PPP profiles are shown per router. Pick a router in the panel above, or sync profiles from the router.",
+      "empty_hint": "Profiles from this router will appear here once synced, or create a new speed profile manually."
     }
   },
   "import_v2": {
