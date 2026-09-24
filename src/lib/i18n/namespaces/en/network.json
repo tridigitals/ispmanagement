@@ -152,7 +152,10 @@
       "e_odp_missing": "Source ODP node is not available in the topology map.",
       "cancel_add": "Cancel adding",
       "add_asset": "Add asset"
-    }
+    },
+    "picker_hint": "Click the map to pick the router location — drag the marker to refine.",
+    "picker_no_point": "No point selected yet.",
+    "picker_container_missing": "Map container missing. Try closing and reopening."
   },
   "olt": {
     "title": "OLT Monitoring",

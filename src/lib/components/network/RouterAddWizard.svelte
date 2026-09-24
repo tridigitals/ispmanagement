@@ -4,6 +4,7 @@
   import Button from '$lib/components/ds/Button.svelte';
   import Field from '$lib/components/ds/Field.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
+  import CoordMapPicker from '$lib/components/network/CoordMapPicker.svelte';
   import { mikrotik } from '$lib/api/mikrotik';
   import { pppoe } from '$lib/api/pppoe';
   import { ispPackages } from '$lib/api/ispPackages';
@@ -362,24 +363,7 @@
     </div>
   {:else if step === 2}
     <div class="grid gap-3">
-      <div class="grid grid-cols-2 gap-3">
-        <Field
-          stacked
-          id="rzw-lat"
-          label={$t('network.map.latitude')}
-          value={formLatitude}
-          placeholder="-6.200000"
-          onchange={(v) => (formLatitude = v)}
-        />
-        <Field
-          stacked
-          id="rzw-lng"
-          label={$t('network.map.longitude')}
-          value={formLongitude}
-          placeholder="106.816666"
-          onchange={(v) => (formLongitude = v)}
-        />
-      </div>
+      <CoordMapPicker bind:latitude={formLatitude} bind:longitude={formLongitude} height="min(46vh, 400px)" />
       <p class="text-xs text-muted-foreground">
         {$t('admin.network.routers.wizard.location_hint')}
       </p>

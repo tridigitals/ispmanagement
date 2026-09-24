@@ -152,7 +152,10 @@
       "e_odp_missing": "Node ODP sumber tidak tersedia di peta topologi.",
       "cancel_add": "Batal tambah",
       "add_asset": "Tambah aset"
-    }
+    },
+    "picker_hint": "Klik peta untuk pilih titik lokasi router — geser marker untuk presisi.",
+    "picker_no_point": "Belum ada titik dipilih.",
+    "picker_container_missing": "Container peta tidak terdeteksi. Coba tutup dan buka kembali."
   },
   "olt": {
     "title": "Monitoring OLT",
