@@ -309,11 +309,10 @@
 />
 
 {#if showModal}
+  <!-- Klik backdrop sengaja TIDAK menutup: form role panjang, tutup via X / Simpan. -->
   <div
     class="modal-backdrop"
-    role="button"
-    tabindex="0"
-    onclick={() => (showModal = false)}
+    role="presentation"
     onkeydown={(e) => e.key === 'Escape' && (showModal = false)}
     transition:fade={{ duration: 200 }}
   >

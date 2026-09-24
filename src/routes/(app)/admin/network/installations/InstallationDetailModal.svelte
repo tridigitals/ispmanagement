@@ -158,7 +158,6 @@
   });
 
   function onBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeDetail(); }
-  function onCancelBackdropClick(e: MouseEvent) { if (e.target === e.currentTarget) closeCancelDialog(); }
   function onCancelBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeCancelDialog(); }
 </script>
 
@@ -333,7 +332,7 @@
 
 {#if cancelDialogOpen && cancelTarget}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="modal-backdrop" onclick={onCancelBackdropClick} onkeydown={onCancelBackdropKey}>
+  <div class="modal-backdrop" onkeydown={onCancelBackdropKey}>
     <div class="modal cancel-modal">
       <div class="modal-head"><h2>{tr('common.cancel', 'Cancel')} WO</h2><button class="btn ghost icon-btn" onclick={closeCancelDialog} aria-label={tr('common.close', 'Close')}><Icon name="x" size={16} /></button></div>
       <p class="step-help">{tr('admin.network.installations.cancel_reason_required', 'Min 10 chars reason.')}</p>

@@ -7,6 +7,13 @@
     width = '420px',
     show = $bindable(false),
     bodyOverflow = 'auto',
+    /* Default false: klik di luar kartu TIDAK menutup modal.
+       Modal berisi wizard/form panjang — klik backdrop sekali (atau salah klik
+       saat scroll) tidak boleh membuang isian. Tutup lewat tombol X atau
+       tombol Batal/Simpan di dalam modal. Set `closeOnBackdropClick` bila
+       memang butuh perilaku lama. */
+    closeOnBackdropClick = false,
+    closeOnEscape = true,
     onclose,
     children,
     footer,
@@ -15,37 +22,31 @@
     width?: string;
     show: boolean;
     bodyOverflow?: 'auto' | 'visible';
+    closeOnBackdropClick?: boolean;
+    closeOnEscape?: boolean;
     onclose?: () => void;
     children?: import('svelte').Snippet;
     footer?: import('svelte').Snippet;
   }>();
-
-  let backdropPointerDown = $state(false);
 
   function close() {
     show = false;
     if (onclose) onclose();
   }
 
-  function handleBackdropPointerDown(event: PointerEvent) {
-    backdropPointerDown = event.target === event.currentTarget;
-  }
-
   function handleBackdropClick(event: MouseEvent) {
-    const isDirectBackdropClick = event.target === event.currentTarget;
-    if (backdropPointerDown && isDirectBackdropClick) {
-      close();
-    }
-    backdropPointerDown = false;
+    if (!closeOnBackdropClick) return;
+    /* event.target === currentTarget = klik tepat di backdrop,
+       bukan klik yang di-bubble dari isi kartu. */
+    if (event.target === event.currentTarget) close();
   }
 </script>
 
 {#if show}
   <div
     class="modal-backdrop"
-    onpointerdown={handleBackdropPointerDown}
     onclick={handleBackdropClick}
-    onkeydown={(e) => e.key === 'Escape' && close()}
+    onkeydown={(e) => e.key === 'Escape' && closeOnEscape && close()}
     role="button"
     tabindex="0"
     transition:fade={{ duration: 200 }}

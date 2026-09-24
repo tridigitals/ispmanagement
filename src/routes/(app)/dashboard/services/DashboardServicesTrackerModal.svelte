@@ -56,13 +56,10 @@
   } = $props();
 </script>
 
+<!-- Klik backdrop sengaja TIDAK menutup: modal tracker berisi form; tutup via X. -->
 <div
   class="tracker-backdrop"
-  role="button"
-  tabindex="0"
-  onclick={(e) => {
-    if (e.target === e.currentTarget) onClose();
-  }}
+  role="presentation"
   onkeydown={(e) => {
     if (e.key === 'Escape') onClose();
   }}

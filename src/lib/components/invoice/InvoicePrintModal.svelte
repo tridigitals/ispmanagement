@@ -45,8 +45,10 @@
     onclose?.();
   }
 
+  /* Klik di luar kartu sengaja TIDAK menutup — modal ini berisi dokumen
+     panjang; salah klik tidak boleh membuang preview. Tutup via tombol X. */
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === event.currentTarget) close();
+    void event;
   }
 
   function handlePrint() {

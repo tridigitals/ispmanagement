@@ -158,11 +158,7 @@
 {#if detailOpen && activeRow}
   <div
     class="modal-backdrop"
-    role="button"
-    tabindex="0"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) closeDetail();
-    }}
+    role="presentation"
     onkeydown={(e) => {
       if (e.key === 'Escape') closeDetail();
     }}
@@ -945,11 +941,7 @@
 {#if cancelDialogOpen && cancelTarget}
   <div
     class="modal-backdrop"
-    role="button"
-    tabindex="0"
-    onclick={(e) => {
-      if (e.target === e.currentTarget) closeCancelDialog();
-    }}
+    role="presentation"
     onkeydown={(e) => {
       if (e.key === 'Escape') closeCancelDialog();
     }}

@@ -590,7 +590,8 @@
 </div>
 
 {#if showModal}
-  <div class="modal-backdrop" onclick={() => (showModal = false)} role="presentation">
+  <!-- Klik backdrop sengaja TIDAK menutup: form panjang, tutup via X / tombol aksi. -->
+  <div class="modal-backdrop" role="presentation">
     <div class="modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="modal-header">
         <h3>{editing ? ($t('common.edit') || 'Edit') : ($t('network.olt.add') || 'Add OLT')}</h3>
@@ -690,9 +691,9 @@
   oncancel={() => { deleteTarget = null; }}
 />
 
-<!-- Map Picker Modal -->
+<!-- Map Picker Modal — backdrop tidak menutup (salah klik buang pin), tutup via Batal/Gunakan. -->
 {#if showMapPicker}
-  <div class="modal-backdrop" onclick={closeMapPicker} role="presentation">
+  <div class="modal-backdrop" role="presentation">
     <div class="modal map-picker-modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="modal-header">
         <h3>{$t('network.olt.pick_location')}</h3>
