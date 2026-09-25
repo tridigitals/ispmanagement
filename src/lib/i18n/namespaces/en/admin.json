@@ -1475,7 +1475,9 @@
       "t_created": "Installation order created.",
       "step2": "Address & service",
       "searching": "Searching…",
-      "no_contact": "No contact"
+      "no_contact": "No contact",
+      "sel_customer": "Selected customer",
+      "change": "Change"
     },
     "list_v2": {
       "desc": "{a} registered · {b} have an active service · {c} awaiting installation",

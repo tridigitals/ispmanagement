@@ -1074,7 +1074,9 @@
       "t_created": "Order instalasi dibuat.",
       "step2": "Alamat & layanan",
       "searching": "Mencari…",
-      "no_contact": "Tanpa kontak"
+      "no_contact": "Tanpa kontak",
+      "sel_customer": "Pelanggan terpilih",
+      "change": "Ganti"
     },
     "list_v2": {
       "desc": "{a} terdaftar · {b} punya layanan aktif · {c} menunggu instalasi",

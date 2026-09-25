@@ -583,15 +583,31 @@
                 icon: 'chevronRight',
                 onclick: () => goto(`/v2/admin/customers/${c.id}`),
               }}
-              rest={canManage
-                ? [
-                    { label: $t('admin.customers.list_v2.act_service'), icon: 'wifi' as const, onclick: () => goto(`/v2/admin/customers/${c.id}?tab=subscriptions`) },
-                    { label: $t('admin.customers.list_v2.act_invoice'), icon: 'receipt' as const, onclick: () => void createInvoiceFor(c) },
-                    { label: $t('admin.customers.list_v2.act_wa'), icon: 'inbox' as const, onclick: () => openWhatsApp(c) },
-                    { label: $t('admin.customers.list_v2.act_email'), icon: 'mail' as const, onclick: () => openEmail(c) },
-                    { label: $t('admin.customers.list_v2.act_delete'), icon: 'close' as const, danger: true, onclick: () => ((deleteTarget = c), (deleteOpen = true)) },
-                  ]
-                : []}
+              rest={[
+                /* Buat pesanan = izin create/orders, BUKAN manage/customers —
+                   jadi dipisah dari blok canManage di bawah supaya staf yang
+                   boleh membuat order tetap bisa, walau tak boleh mengelola
+                   pelanggan. Router wizard membaca ?customer_id= untuk prefill. */
+                ...(canCreateOrders
+                  ? [
+                      {
+                        label: $t('admin.customers.actions.create_order'),
+                        icon: 'clipboard' as const,
+                        onclick: () =>
+                          goto(`/v2/admin/customers/orders/new?customer_id=${encodeURIComponent(c.id)}`),
+                      },
+                    ]
+                  : []),
+                ...(canManage
+                  ? [
+                      { label: $t('admin.customers.list_v2.act_service'), icon: 'wifi' as const, onclick: () => goto(`/v2/admin/customers/${c.id}?tab=subscriptions`) },
+                      { label: $t('admin.customers.list_v2.act_invoice'), icon: 'receipt' as const, onclick: () => void createInvoiceFor(c) },
+                      { label: $t('admin.customers.list_v2.act_wa'), icon: 'inbox' as const, onclick: () => openWhatsApp(c) },
+                      { label: $t('admin.customers.list_v2.act_email'), icon: 'mail' as const, onclick: () => openEmail(c) },
+                      { label: $t('admin.customers.list_v2.act_delete'), icon: 'close' as const, danger: true, onclick: () => ((deleteTarget = c), (deleteOpen = true)) },
+                    ]
+                  : []),
+              ]}
             />
           {/if}
         {/if}

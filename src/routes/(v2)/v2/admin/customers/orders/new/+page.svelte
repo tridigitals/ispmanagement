@@ -184,6 +184,20 @@
     if (locations.length > 0 && !draft.existingLocationId) draft.existingLocationId = locations[0].id;
   }
 
+  /* "Ganti": buang pelanggan terpilih supaya pengguna mencari lagi. Wajib
+     membersihkan juga alamat + lokasi terpilih — kalau tidak, order bisa
+     terkirim membawa pelanggan baru tapi alamat milik pelanggan lama. */
+  function clearSelectedCustomer() {
+    selectedCustomer = null;
+    locations = [];
+    draft.existingCustomerId = '';
+    draft.existingLocationId = '';
+    draft.locationMode = 'new';
+    customerSearch = '';
+    customerResults = [];
+    customerSearchHasSearched = false;
+  }
+
   function nextStep() {
     if (step === 1) {
       const err = validateOrderStep1(draft);
@@ -414,6 +428,32 @@
           <button type="button" class="flex-1 rounded-lg px-3 py-2 text-sm {draft.customerMode === 'existing' ? 'bg-white font-semibold shadow' : 'text-ink-500'}" onclick={() => (draft.customerMode = 'existing')}>{ $t('admin.customers.orders_new.tab_existing') }</button>
         </div>
         {#if draft.customerMode === 'existing'}
+          <!-- Kartu pelanggan terpilih. Penting untuk jalur ?customer_id=
+               (aksi "Buat pesanan" dari daftar pelanggan): init() sudah
+               memuat pelanggan ke state, tapi tanpa kartu ini pengguna tidak
+               melihat apa pun dan mengira prefill-nya gagal. -->
+          {#if selectedCustomer}
+            <div class="mb-3 rounded-xl bg-ink-50 px-3 py-2.5 ring-1 ring-ink-200">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="text-xs font-medium text-ink-500">{ $t('admin.customers.orders_new.sel_customer') }</div>
+                  <div class="truncate font-medium text-ink-900">{selectedCustomer.name}</div>
+                  <div class="truncate text-xs text-ink-500">
+                    {selectedCustomer.phone || selectedCustomer.email || $t('admin.customers.orders_new.no_contact')}
+                  </div>
+                  {#if locations.length}
+                    <div class="mt-0.5 text-xs text-ink-400">
+                      {locations.length} { $t('admin.customers.orders_new.saved_addr') }
+                    </div>
+                  {/if}
+                </div>
+                <Button variant="ghost" onclick={() => void clearSelectedCustomer()}>
+                  { $t('admin.customers.orders_new.change') }
+                </Button>
+              </div>
+            </div>
+          {/if}
+
           <div class="flex gap-2">
             <div class="flex-1">
               <Field id="ord-search" label={ $t('admin.customers.orders_new.cust_aria') } placeholder={ $t('admin.customers.orders_new.search_ph') } value={customerSearch} onchange={(v) => { customerSearch = v; }} />
