@@ -34,6 +34,16 @@
   let features = $state<any[]>([]);
   let planFeatures = $state<Record<string, string>>({}); // feature_id -> value
 
+  /* Nilai "number" bisa berupa kata kunci ("unlimited"/"-1"), bukan angka.
+   * Dipakai untuk memilih tipe input: `<input type="number">` akan
+   * menampilkan kosong untuk nilai non-numerik sehingga admin tidak melihat
+   * nilai sebenarnya dan bisa menyimpan batas menjadi kosong. */
+  function isNumericValue(v: string | undefined): boolean {
+    if (v === undefined || v === null) return false;
+    const s = String(v).trim();
+    return s !== '' && Number.isFinite(Number(s));
+  }
+
   let activeTab = $state('general');
   const planEditorTabs = $derived.by(() => [
     { id: 'general', label: $t('superadmin.plans.editor.tabs.general') || 'General', panelId: 'plan-editor-panel' },
@@ -93,7 +103,32 @@
     superadminPlansCache.set({ plans: next, fetchedAt: Date.now() });
   }
 
+  /* Nilai limit yang di-enforce backend. Menyimpan string kosong berarti
+   * limit 0 (paling ketat) — admin hampir pasti tidak berniat mengunci
+   * fiturnya sendiri, jadi tahan dulu dan minta isi eksplisit. Hanya berlaku
+   * untuk fitur numerik; fitur boolean/text tidak terpengaruh. */
+  const LIMIT_FEATURES = ['max_users', 'max_members', 'max_storage_gb'];
+  function findEmptyLimit(): { code: string; name: string } | null {
+    for (const f of features) {
+      if (!LIMIT_FEATURES.includes(f.code)) continue;
+      const v = planFeatures[f.id];
+      if (v !== undefined && String(v).trim() === '') {
+        return { code: f.code, name: f.name };
+      }
+    }
+    return null;
+  }
+
   async function savePlan() {
+    // Validasi sebelum menulis apa pun supaya plan tidak setengah tersimpan.
+    const empty = findEmptyLimit();
+    if (empty) {
+      toast.error(
+        `${empty.name} (${empty.code}) tidak boleh kosong — isi angka atau "unlimited".`,
+      );
+      return;
+    }
+
     saving = true;
     try {
       if (isNew) {
@@ -366,9 +401,16 @@
                     <span class="slider"></span>
                   </label>
                 {:else if feature.value_type === 'number'}
+                  <!-- Nilai number boleh berupa "unlimited" (mis. max_users
+                       Enterprise). `<input type="number">` tidak bisa
+                       menampilkannya — nilainya jadi kosong, dan kalau admin
+                       menyimpan, batas yang tadinya tanpa batas bisa berubah
+                       jadi kosong (= limit 0). Untuk nilai non-numerik pakai
+                       input teks supaya nilainya terlihat apa adanya. -->
                   <input
-                    type="number"
+                    type={isNumericValue(planFeatures[feature.id]) ? 'number' : 'text'}
                     value={planFeatures[feature.id]}
+                    placeholder="unlimited"
                     oninput={(e) => (planFeatures[feature.id] = e.currentTarget.value)}
                     class="input-sm"
                   />

@@ -41,6 +41,7 @@ pub mod notification_service;
 pub mod olt_service;
 pub mod onu_linker;
 pub mod payment_service;
+pub mod plan_catalog;
 pub mod plan_service;
 pub mod pppoe_service;
 pub mod storage_service;

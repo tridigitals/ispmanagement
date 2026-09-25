@@ -6,6 +6,7 @@ use crate::models::{
     CreateFeatureRequest, CreatePlanRequest, FeatureAccess, FeatureDefinition, Plan, PlanFeature,
     PlanFeatureValue, PlanWithFeatures, TenantSubscription, UpdatePlanRequest,
 };
+use crate::services::plan_catalog::FEATURES;
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -934,7 +935,7 @@ impl PlanService {
                         .to_string();
                     return Ok(FeatureAccess {
                         code: feature_code.to_string(),
-                        has_access: self.is_truthy(&value_str),
+                        has_access: Self::is_truthy(&value_str),
                         value: value_str,
                         value_type: feature.value_type,
                     });
@@ -965,37 +966,63 @@ impl PlanService {
 
         Ok(FeatureAccess {
             code: feature_code.to_string(),
-            has_access: self.is_truthy(&value),
+            has_access: Self::is_truthy(&value),
             value,
             value_type: feature.value_type,
         })
     }
 
     /// Check if a value is truthy (for boolean features) or positive (for number features)
-    fn is_truthy(&self, value: &str) -> bool {
-        match value.to_lowercase().as_str() {
+    fn is_truthy(value: &str) -> bool {
+        match value.trim().to_lowercase().as_str() {
             "true" | "yes" | "1" | "unlimited" => true,
-            "false" | "no" | "0" => false,
-            _ => {
-                // Try parsing as number - positive means has access
-                value.parse::<i64>().map(|n| n > 0).unwrap_or(false)
+            "false" | "no" | "0" | "" => false,
+            other => {
+                // Angka positif = punya akses. Diparse sebagai f64, bukan i64,
+                // supaya nilai pecahan (mis. "0.5") tidak salah dianggap false
+                // — konsisten dengan `parse_limit`.
+                other
+                    .parse::<f64>()
+                    .map(|n| n.is_finite() && n > 0.0)
+                    .unwrap_or(false)
             }
         }
     }
 
-    /// Get numeric limit for a feature (for things like max_users)
+    /// Apakah nilai menandakan tanpa batas.
+    fn is_unlimited(value: &str) -> bool {
+        let v = value.trim();
+        v.eq_ignore_ascii_case("unlimited") || v == "-1"
+    }
+
+    /// Batas numerik, atau `None` bila tanpa batas.
+    ///
+    /// Sebelumnya fungsi ini hanya `parse::<i64>()`, sehingga nilai yang gagal
+    /// di-parse — string kosong (baris Enterprise yang tersimpan `''`) maupun
+    /// pecahan seperti `"0.5"` (paket Free) — diam-diam berubah arti jadi
+    /// "tanpa batas". Akibatnya paket Free tanpa batas disk dan Enterprise
+    /// tanpa batas anggota. Sekarang pecahan dibulatkan ke atas (batas kecil
+    /// tetap berlaku) dan nilai non-numerik dianggap 0, yaitu paling ketat,
+    /// bukan paling longgar.
+    fn parse_limit(value: &str) -> Option<i64> {
+        let v = value.trim();
+        if Self::is_unlimited(v) {
+            return None;
+        }
+        let parsed = v.parse::<f64>().ok().filter(|n| n.is_finite());
+        Some(parsed.map(|n| n.ceil().max(0.0) as i64).unwrap_or(0))
+    }
+
+    /// Get numeric limit for a feature (for things like max_users).
+    ///
+    /// `None` = tanpa batas.
     pub async fn get_feature_limit(
         &self,
         tenant_id: &str,
         feature_code: &str,
     ) -> Result<Option<i64>, sqlx::Error> {
         let access = self.check_feature_access(tenant_id, feature_code).await?;
-
-        if access.value.to_lowercase() == "unlimited" {
-            return Ok(None); // None means unlimited
-        }
-
-        Ok(access.value.parse::<i64>().ok())
+        Ok(Self::parse_limit(&access.value))
     }
 
     /// Get detailed subscription info for dashboard (Usage vs Limits)
@@ -1046,8 +1073,15 @@ impl PlanService {
         };
 
         // 2. Get Limits
-        let storage_limit_gb = self.get_feature_limit(tenant_id, "max_storage_gb").await?;
-        let storage_limit = storage_limit_gb.map(|gb| gb * 1024 * 1024 * 1024); // Convert GB to Bytes
+        // Satuan BYTES: `tenants.storage_usage` diisi `data.len()` dan
+        // diverifikasi sama dengan `SUM(file_records.size)` (mis. 38.918.839),
+        // sementara `storage_service` membandingkan terhadap
+        // `gb * 1024^3`. Jadi konversi ×1024^3 memang benar; UI juga merender
+        // nilai ini lewat formatBytes.
+        let storage_limit = self
+            .get_feature_limit(tenant_id, "max_storage_gb")
+            .await?
+            .map(|gb| gb * 1024 * 1024 * 1024);
 
         let member_limit = self.get_feature_limit(tenant_id, "max_members").await?;
 
@@ -1107,11 +1141,7 @@ impl PlanService {
             .check_feature_access_with_conn(tenant_id, feature_code, tx)
             .await?;
 
-        if access.value.to_lowercase() == "unlimited" {
-            return Ok(None); // None means unlimited
-        }
-
-        Ok(access.value.parse::<i64>().ok())
+        Ok(Self::parse_limit(&access.value))
     }
 
     /// Check if a tenant has access to a feature within a transaction (PostgreSQL only)
@@ -1170,7 +1200,7 @@ impl PlanService {
                         .to_string();
                     return Ok(FeatureAccess {
                         code: feature_code.to_string(),
-                        has_access: self.is_truthy(&value_str),
+                        has_access: Self::is_truthy(&value_str),
                         value: value_str,
                         value_type: feature.value_type,
                     });
@@ -1192,95 +1222,23 @@ impl PlanService {
 
         Ok(FeatureAccess {
             code: feature_code.to_string(),
-            has_access: self.is_truthy(&value),
+            has_access: Self::is_truthy(&value),
             value,
             value_type: feature.value_type,
         })
     }
     /// Seed default system features if they don't exist
+    ///
+    /// Definisi diambil dari `services::plan_catalog::FEATURES` — SATU sumber
+    /// kebenaran, dipakai bareng `db::connection::seed::seed_plans`. Dulu
+    /// fungsi ini menduplikasi daftar yang sama dengan nama/deskripsi/tipologi
+    /// berbeda, sehingga dua jalur seed saling menimpa dan hasilnya bergantung
+    /// urutan pemanggilan.
     pub async fn seed_default_features(&self) -> Result<(), sqlx::Error> {
-        // Define standard SaaS features
-        let default_features = vec![
-            (
-                "max_users",
-                "Maximum Users",
-                "Maximum number of users allowed",
-                "number",
-                "limits",
-                "5",
-            ),
-            (
-                "max_storage_gb",
-                "Storage (GB)",
-                "Maximum storage in Gigabytes",
-                "number",
-                "limits",
-                "1",
-            ),
-            (
-                "api_access",
-                "API Access",
-                "Access to developer API",
-                "boolean",
-                "capabilities",
-                "false",
-            ),
-            (
-                "custom_domain",
-                "Custom Domain",
-                "Ability to use custom domain",
-                "boolean",
-                "branding",
-                "false",
-            ),
-            (
-                "remove_branding",
-                "Remove Branding",
-                "Remove 'Powered by' branding",
-                "boolean",
-                "branding",
-                "false",
-            ),
-            (
-                "audit_logs",
-                "Audit Logs",
-                "Access to audit logs",
-                "boolean",
-                "security",
-                "false",
-            ),
-            (
-                "managed_radius",
-                "Managed RADIUS",
-                "Access to managed RADIUS onboarding and centralized PPP authentication",
-                "boolean",
-                "network",
-                "false",
-            ),
-            (
-                "sso_support",
-                "SSO Support",
-                "Single Sign-On (SAML/OIDC)",
-                "boolean",
-                "security",
-                "false",
-            ),
-            (
-                "support_level",
-                "Support Level",
-                "Level of support (Standard, Priority, 24/7)",
-                "text",
-                "support",
-                "Standard",
-            ),
-        ];
-
-        for (i, (code, name, description, value_type, category, default_value)) in
-            default_features.into_iter().enumerate()
-        {
+        for f in FEATURES {
             let exists: bool =
                 sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM features WHERE code = $1)")
-                    .bind(code)
+                    .bind(f.code)
                     .fetch_one(&self.pool)
                     .await?;
 
@@ -1289,34 +1247,34 @@ impl PlanService {
                     r#"
                     INSERT INTO features (id, code, name, description, value_type, category, default_value, sort_order, created_at)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-                    "#
+                    "#,
                 )
                 .bind(Uuid::new_v4().to_string())
-                .bind(code)
-                .bind(name)
-                .bind(description)
-                .bind(value_type)
-                .bind(category)
-                .bind(default_value)
-                .bind(i as i32)
+                .bind(f.code)
+                .bind(f.name)
+                .bind(f.description)
+                .bind(f.value_type)
+                .bind(f.category)
+                .bind(f.default_value)
+                .bind(f.sort_order)
                 .execute(&self.pool)
                 .await?;
             } else {
                 // Feature exists, ensure definition matches code (e.g. value_type fix)
                 sqlx::query(
                     r#"
-                    UPDATE features 
+                    UPDATE features
                     SET name = $2, description = $3, value_type = $4, category = $5, default_value = $6, sort_order = $7
                     WHERE code = $1
-                    "#
+                    "#,
                 )
-                .bind(code)
-                .bind(name)
-                .bind(description)
-                .bind(value_type)
-                .bind(category)
-                .bind(default_value)
-                .bind(i as i32)
+                .bind(f.code)
+                .bind(f.name)
+                .bind(f.description)
+                .bind(f.value_type)
+                .bind(f.category)
+                .bind(f.default_value)
+                .bind(f.sort_order)
                 .execute(&self.pool)
                 .await?;
             }
@@ -1327,7 +1285,103 @@ impl PlanService {
 
 #[cfg(test)]
 mod plan_validation_tests {
-    use super::{validate_plan_name, validate_plan_prices, validate_plan_slug};
+    use super::{validate_plan_name, validate_plan_prices, validate_plan_slug, PlanService};
+
+    /// `parse_limit` adalah inti perbaikan bug limit:
+    /// dulu `''` dan `"0.5"` sama-sama gagal `parse::<i64>()` lalu diam-diam
+    /// dianggap "tanpa batas". Sekarang hanya nilai yang memang berarti tanpa
+    /// batas yang mengembalikan `None`.
+    #[test]
+    fn parse_limit_unlimited_eksplisit() {
+        assert_eq!(PlanService::parse_limit("unlimited"), None);
+        assert_eq!(PlanService::parse_limit("UNLIMITED"), None);
+        assert_eq!(PlanService::parse_limit(" unlimited "), None);
+        assert_eq!(PlanService::parse_limit("-1"), None);
+    }
+
+    #[test]
+    fn parse_limit_bulat() {
+        assert_eq!(PlanService::parse_limit("0"), Some(0));
+        assert_eq!(PlanService::parse_limit("3"), Some(3));
+        assert_eq!(PlanService::parse_limit("999"), Some(999));
+        assert_eq!(PlanService::parse_limit(" 20 "), Some(20));
+    }
+
+    /// Regresi paket Free: `max_storage_gb = "0.5"` dulu jadi TANPA BATAS.
+    /// Sekarang dibulatkan ke atas supaya batas kecil tetap berlaku.
+    #[test]
+    fn parse_limit_pecahan_tidak_jadi_unlimited() {
+        assert_eq!(PlanService::parse_limit("0.5"), Some(1));
+        assert_eq!(PlanService::parse_limit("1.5"), Some(2));
+        assert_eq!(PlanService::parse_limit("50.0"), Some(50));
+        // Pecahan sangat kecil wajib tetap terbatas, bukan 0 (0 juga berarti
+        // "tidak boleh upload sama sekali" — lebih baik 1 daripada diam-diam
+        // tanpa batas).
+        assert_eq!(PlanService::parse_limit("0.0001"), Some(1));
+    }
+
+    /// Regresi baris Enterprise kosong: `value = ''` dulu jadi TANPA BATAS.
+    /// Sekarang dianggap 0 = paling ketat, bukan paling longgar.
+    #[test]
+    fn parse_limit_kosong_jadi_nol_bukan_unlimited() {
+        assert_eq!(PlanService::parse_limit(""), Some(0));
+        assert_eq!(PlanService::parse_limit("   "), Some(0));
+    }
+
+    #[test]
+    fn parse_limit_non_numerik_jadi_nol() {
+        assert_eq!(PlanService::parse_limit("abc"), Some(0));
+        assert_eq!(PlanService::parse_limit("null"), Some(0));
+        assert_eq!(PlanService::parse_limit("NaN"), Some(0));
+    }
+
+    #[test]
+    fn parse_limit_negatif_jadi_nol() {
+        assert_eq!(PlanService::parse_limit("-5"), Some(0));
+    }
+
+    /// `is_truthy` dipakai untuk `has_access`. Dulu hanya `parse::<i64>()`,
+    /// sehingga nilai pecahan positif ("0.5") salah dianggap TIDAK punya akses
+    /// padahal fiturnya jelas dibatasi (bukan dimatikan).
+    #[test]
+    fn is_truthy_konsisten_dengan_parse_limit() {
+        // `is_truthy` murni string-matching — tidak menyentuh DB, jadi tidak
+        // perlu instance/pool sama sekali (dan pool malas tetap butuh runtime
+        // Tokio, yang tidak ada di test sinkron).
+
+        // Boolean eksplisit
+        assert!(PlanService::is_truthy("true"));
+        assert!(PlanService::is_truthy("TRUE"));
+        assert!(PlanService::is_truthy(" true "));
+        assert!(PlanService::is_truthy("yes"));
+        assert!(PlanService::is_truthy("1"));
+        assert!(PlanService::is_truthy("unlimited"));
+
+        assert!(!PlanService::is_truthy("false"));
+        assert!(!PlanService::is_truthy("no"));
+        assert!(!PlanService::is_truthy("0"));
+        assert!(!PlanService::is_truthy(""));
+        assert!(!PlanService::is_truthy("   "));
+        assert!(!PlanService::is_truthy("abc"));
+
+        // Numerik: positif = punya akses (termasuk pecahan), negatif/nol = tidak
+        assert!(PlanService::is_truthy("3"));
+        assert!(PlanService::is_truthy("20"));
+        assert!(PlanService::is_truthy("0.5"), "pecahan positif harus dianggap punya akses");
+        assert!(!PlanService::is_truthy("-5"), "negatif bukan akses");
+
+        // Selaras dengan parse_limit: nilai yang menghasilkan limit Some(n>0)
+        // harus truthy; nilainya `unlimited` → None (tanpa batas) juga truthy.
+        for v in ["3", "0.5", "50", "unlimited"] {
+            let limit = PlanService::parse_limit(v);
+            assert!(
+                PlanService::is_truthy(v),
+                "nilai {:?} memberi limit {:?} tapi is_truthy=false",
+                v,
+                limit
+            );
+        }
+    }
 
     #[test]
     fn slug_valid_diterima() {

@@ -1,4 +1,5 @@
 use super::DbPool;
+use crate::services::plan_catalog::{self, FEATURES, PLANS};
 use std::env;
 
 /// Seed default settings
@@ -325,93 +326,33 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
     let now = chrono::Utc::now();
 
     // 1. Seed Features
-    let features = vec![
-        (
-            "max_storage_gb",
-            "Storage Limit (GB)",
-            "Maximum storage space allowed",
-            "number",
-            "0.5",
-        ),
-        (
-            "max_members",
-            "Team Member Limit",
-            "Maximum number of team members",
-            "number",
-            "2",
-        ),
-        (
-            "support_level",
-            "Support Level",
-            "Level of customer support provided",
-            "string",
-            "basic",
-        ),
-        (
-            "custom_domain",
-            "Custom Domain",
-            "Ability to use custom domain",
-            "boolean",
-            "false",
-        ),
-    ];
-
-    for (code, name, desc, vtype, default_val) in features {
+    // 1. Seed Features — definisi diambil dari katalog bersama supaya jalur
+    //    seed ini dan `PlanService::seed_default_features` tidak menyimpang.
+    for f in FEATURES {
         let id = uuid::Uuid::new_v4().to_string();
 
         #[cfg(feature = "postgres")]
         sqlx::query(r#"
-            INSERT INTO features (id, code, name, description, value_type, default_value, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            INSERT INTO features (id, code, name, description, value_type, category, default_value, sort_order, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (code) DO NOTHING
         "#)
-        .bind(id).bind(code).bind(name).bind(desc).bind(vtype).bind(default_val).bind(now)
+        .bind(id).bind(f.code).bind(f.name).bind(f.description).bind(f.value_type)
+        .bind(f.category).bind(f.default_value).bind(f.sort_order).bind(now)
         .execute(pool).await?;
 
         #[cfg(feature = "sqlite")]
         sqlx::query(r#"
-            INSERT OR IGNORE INTO features (id, code, name, description, value_type, default_value, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO features (id, code, name, description, value_type, category, default_value, sort_order, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#)
-        .bind(id).bind(code).bind(name).bind(desc).bind(vtype).bind(default_val).bind(now.to_rfc3339())
+        .bind(id).bind(f.code).bind(f.name).bind(f.description).bind(f.value_type)
+        .bind(f.category).bind(f.default_value).bind(f.sort_order).bind(now.to_rfc3339())
         .execute(pool).await?;
     }
 
     // 2. Seed Plans
-    let plans = vec![
-        (
-            "Free",
-            "free",
-            "Perfect for getting started",
-            0.0,
-            0.0,
-            true,
-            true,
-            1,
-        ),
-        (
-            "Pro",
-            "pro",
-            "For growing teams",
-            290_000.0,
-            2_900_000.0,
-            true,
-            false,
-            2,
-        ),
-        (
-            "Enterprise",
-            "enterprise",
-            "For large organizations",
-            990_000.0,
-            9_900_000.0,
-            true,
-            false,
-            3,
-        ),
-    ];
-
-    for (name, slug, desc, price_m, price_y, active, is_default, order) in plans {
+    for p in PLANS {
         let plan_id = uuid::Uuid::new_v4().to_string();
 
         #[cfg(feature = "postgres")]
@@ -420,7 +361,9 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             ON CONFLICT (slug) DO NOTHING
         "#)
-        .bind(&plan_id).bind(name).bind(slug).bind(desc).bind(price_m).bind(price_y).bind(active).bind(is_default).bind(order).bind(now).bind(now)
+        .bind(&plan_id).bind(p.name).bind(p.slug).bind(p.description)
+        .bind(p.price_monthly).bind(p.price_yearly).bind(p.is_active).bind(p.is_default)
+        .bind(p.sort_order).bind(now).bind(now)
         .execute(pool).await?;
 
         #[cfg(feature = "sqlite")]
@@ -428,7 +371,9 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
             INSERT OR IGNORE INTO plans (id, name, slug, description, price_monthly, price_yearly, is_active, is_default, sort_order, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#)
-        .bind(&plan_id).bind(name).bind(slug).bind(desc).bind(price_m).bind(price_y).bind(active).bind(is_default).bind(order).bind(now.to_rfc3339()).bind(now.to_rfc3339())
+        .bind(&plan_id).bind(p.name).bind(p.slug).bind(p.description)
+        .bind(p.price_monthly).bind(p.price_yearly).bind(p.is_active).bind(p.is_default)
+        .bind(p.sort_order).bind(now.to_rfc3339()).bind(now.to_rfc3339())
         .execute(pool).await?;
 
         // 3. Link Features to Plans (Fetch IDs first)
@@ -438,34 +383,16 @@ pub async fn seed_plans(pool: &DbPool) -> Result<(), sqlx::Error> {
         let pid_query = "SELECT id FROM plans WHERE slug = ?";
 
         let fetched_pid: Option<String> = sqlx::query_scalar(pid_query)
-            .bind(slug)
+            .bind(p.slug)
             .fetch_optional(pool)
             .await?;
 
         if let Some(pid) = fetched_pid {
-            let features_to_add = match slug {
-                "free" => vec![
-                    ("max_storage_gb", "0.5"),
-                    ("max_members", "2"),
-                    ("support_level", "community"),
-                    ("custom_domain", "false"),
-                ],
-                "pro" => vec![
-                    ("max_storage_gb", "50"),
-                    ("max_members", "10"),
-                    ("support_level", "priority"),
-                    ("custom_domain", "true"),
-                ],
-                "enterprise" => vec![
-                    ("max_storage_gb", "500"),
-                    ("max_members", "999"),
-                    ("support_level", "dedicated"),
-                    ("custom_domain", "true"),
-                ],
-                _ => vec![],
-            };
-
-            for (code, val) in features_to_add {
+            // SEMUA fitur plan ditetapkan eksplisit di sini, termasuk yang
+            // bernilai default. Dulu fitur yang di-enforce seperti `max_users`
+            // tidak pernah di-link, sehingga plan Pro/Enterprise mewarisi
+            // default global dan tenant Enterprise terblokir menambah anggota.
+            for (code, val) in plan_catalog::plan_feature_values(p.slug) {
                 #[cfg(feature = "postgres")]
                 let fid_query = "SELECT id FROM features WHERE code = $1";
                 #[cfg(feature = "sqlite")]
