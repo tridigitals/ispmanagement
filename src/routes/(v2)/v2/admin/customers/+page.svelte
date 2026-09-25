@@ -49,6 +49,9 @@
   let counts = $state({ all: 0, svcActive: 0, svcInactive: 0, svcNone: 0, pending: 0 });
 
   const canManage = $derived($can('manage', 'customers'));
+  /* Buat pesanan instalasi = izin `create` pada resource `orders`, sama seperti
+     legacy (app)/admin/customers — resource izinnya beda dari `customers`. */
+  const canCreateOrders = $derived($can('create', 'orders'));
 
   /* ── Modal tambah pelanggan ─────────────────────────────────────────── */
   let showCreate = $state(false);
@@ -478,6 +481,11 @@
   >
     {#snippet actions()}
       <Button icon="download" onclick={() => void exportCsv()}>{ $t('admin.customers.list_v2.export') }</Button>
+      {#if canCreateOrders}
+        <Button icon="receipt" onclick={() => goto('/v2/admin/customers/orders/new')}>
+          { $t('admin.customers.actions.create_order') }
+        </Button>
+      {/if}
       {#if canManage}
         <Button variant="primary" icon="plus" onclick={openCreate}>{ $t('admin.customers.list_v2.add') }</Button>
       {/if}
