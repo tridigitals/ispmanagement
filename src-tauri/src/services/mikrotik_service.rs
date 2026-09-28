@@ -1720,6 +1720,16 @@ impl MikrotikService {
         tenant_id: &str,
         req: CreateMikrotikRouterRequest,
     ) -> AppResult<MikrotikRouter> {
+        // Batas jumlah router per plan (satuan skala jaringan ISP).
+        crate::services::resource_limit::enforce(
+            &self.pool,
+            tenant_id,
+            "mikrotik_routers",
+            "max_routers",
+            "router",
+        )
+        .await?;
+
         Self::validate_router_coordinates(req.latitude, req.longitude)?;
         let encrypted_password = encrypt_secret(req.password.as_str())?;
         let router = MikrotikRouter::new(

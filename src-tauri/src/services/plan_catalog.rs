@@ -81,13 +81,40 @@ pub const FEATURES: &[FeatureDef] = &[
         sort_order: 2,
     },
     FeatureDef {
+        code: "max_customers",
+        name: "Customer Limit",
+        description: "Maximum number of customers allowed (enforced when creating a customer)",
+        value_type: "number",
+        category: "limits",
+        default_value: "25",
+        sort_order: 3,
+    },
+    FeatureDef {
+        code: "max_routers",
+        name: "Router Limit",
+        description: "Maximum number of MikroTik routers allowed (enforced when adding a router)",
+        value_type: "number",
+        category: "limits",
+        default_value: "1",
+        sort_order: 4,
+    },
+    FeatureDef {
+        code: "max_olts",
+        name: "OLT Limit",
+        description: "Maximum number of OLT devices allowed (enforced when adding an OLT)",
+        value_type: "number",
+        category: "limits",
+        default_value: "0",
+        sort_order: 5,
+    },
+    FeatureDef {
         code: "api_access",
         name: "API Access",
         description: "Access to developer API",
         value_type: "boolean",
         category: "capabilities",
         default_value: "false",
-        sort_order: 3,
+        sort_order: 6,
     },
     FeatureDef {
         code: "custom_domain",
@@ -96,7 +123,7 @@ pub const FEATURES: &[FeatureDef] = &[
         value_type: "boolean",
         category: "branding",
         default_value: "false",
-        sort_order: 4,
+        sort_order: 7,
     },
     FeatureDef {
         code: "remove_branding",
@@ -105,7 +132,7 @@ pub const FEATURES: &[FeatureDef] = &[
         value_type: "boolean",
         category: "branding",
         default_value: "false",
-        sort_order: 5,
+        sort_order: 8,
     },
     FeatureDef {
         code: "audit_logs",
@@ -114,7 +141,7 @@ pub const FEATURES: &[FeatureDef] = &[
         value_type: "boolean",
         category: "security",
         default_value: "false",
-        sort_order: 6,
+        sort_order: 9,
     },
     FeatureDef {
         code: "managed_radius",
@@ -123,7 +150,7 @@ pub const FEATURES: &[FeatureDef] = &[
         value_type: "boolean",
         category: "network",
         default_value: "false",
-        sort_order: 7,
+        sort_order: 10,
     },
     FeatureDef {
         code: "sso_support",
@@ -132,7 +159,7 @@ pub const FEATURES: &[FeatureDef] = &[
         value_type: "boolean",
         category: "security",
         default_value: "false",
-        sort_order: 8,
+        sort_order: 11,
     },
     FeatureDef {
         code: "support_level",
@@ -141,7 +168,7 @@ pub const FEATURES: &[FeatureDef] = &[
         value_type: "text",
         category: "support",
         default_value: "standard",
-        sort_order: 9,
+        sort_order: 12,
     },
 ];
 
@@ -195,6 +222,9 @@ pub fn plan_feature_values(slug: &str) -> &'static [(&'static str, &'static str)
             ("max_users", "3"),
             ("max_members", "2"),
             ("max_storage_gb", "1"),
+            ("max_customers", "25"),
+            ("max_routers", "1"),
+            ("max_olts", "0"),
             ("support_level", "community"),
             ("custom_domain", "false"),
             ("api_access", "false"),
@@ -207,10 +237,16 @@ pub fn plan_feature_values(slug: &str) -> &'static [(&'static str, &'static str)
             ("max_users", "20"),
             ("max_members", "10"),
             ("max_storage_gb", "50"),
+            ("max_customers", "300"),
+            ("max_routers", "10"),
+            ("max_olts", "3"),
             ("support_level", "priority"),
             ("custom_domain", "true"),
-            ("api_access", "false"),
-            ("audit_logs", "false"),
+            // api_access & audit_logs pindah dari Enterprise ke Pro supaya Pro
+            // punya pembeda yang BENAR-BENAR di-enforce (audit_logs dipakai
+            // audit_service). managed_radius tetap Enterprise-only.
+            ("api_access", "true"),
+            ("audit_logs", "true"),
             ("managed_radius", "false"),
             ("sso_support", "false"),
             ("remove_branding", "false"),
@@ -219,6 +255,9 @@ pub fn plan_feature_values(slug: &str) -> &'static [(&'static str, &'static str)
             ("max_users", "unlimited"),
             ("max_members", "unlimited"),
             ("max_storage_gb", "500"),
+            ("max_customers", "unlimited"),
+            ("max_routers", "25"),
+            ("max_olts", "unlimited"),
             ("support_level", "dedicated"),
             ("custom_domain", "true"),
             ("api_access", "true"),
@@ -264,6 +303,36 @@ mod tests {
                 p.slug
             );
         }
+    }
+
+    /// Regresi: limit resource (pelanggan/router/OLT) dulu tidak ada sama
+    /// sekali, sehingga tenant 10 dan 10.000 pelanggan membayar harga sama.
+    #[test]
+    fn setiap_plan_menetapkan_limit_resource() {
+        for p in PLANS {
+            let values = plan_feature_values(p.slug);
+            for code in ["max_customers", "max_routers", "max_olts"] {
+                assert!(
+                    values.iter().any(|(k, _)| *k == code),
+                    "plan '{}' tidak menetapkan {}",
+                    p.slug,
+                    code
+                );
+            }
+        }
+    }
+
+    /// Enterprise harus sanggup menampung tenant terbesar yang sudah ada
+    /// (548 pelanggan, 3 router, 3 OLT). Kalau tidak, kita mengunci pelanggan
+    /// sendiri begitu limit mulai di-enforce.
+    #[test]
+    fn enterprise_menampung_tenant_terbesar() {
+        let values = plan_feature_values("enterprise");
+        let get = |code: &str| values.iter().find(|(k, _)| *k == code).map(|(_, v)| *v);
+        assert_eq!(get("max_customers"), Some("unlimited"));
+        assert_eq!(get("max_olts"), Some("unlimited"));
+        let routers: i64 = get("max_routers").unwrap().parse().expect("angka");
+        assert!(routers >= 3, "Enterprise harus izinkan >= 3 router, dapat {routers}");
     }
 
     /// Setiap nilai per plan harus menunjuk fitur yang benar-benar terdaftar;

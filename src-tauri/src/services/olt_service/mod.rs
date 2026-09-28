@@ -150,6 +150,16 @@ impl OltService {
         tenant_id: &str,
         req: CreateOltRequest,
     ) -> AppResult<Olt> {
+        // Batas jumlah OLT per plan (satuan skala jaringan akses ISP).
+        crate::services::resource_limit::enforce(
+            &self.pool,
+            tenant_id,
+            "olts",
+            "max_olts",
+            "OLT",
+        )
+        .await?;
+
         validate_olt_identity(&req.name, &req.host, req.port, &req.username)?;
         ensure_supported_olt_type(&req.olt_type)?;
         let uplink_router_id = normalize_uplink_router_id(req.uplink_router_id);

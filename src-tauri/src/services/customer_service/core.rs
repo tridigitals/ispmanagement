@@ -1112,6 +1112,18 @@ impl CustomerService {
             .check_permission(actor_id, tenant_id, "customers", "manage")
             .await?;
 
+        // Batas jumlah pelanggan per plan. Ini satuan yang menentukan skala
+        // sebuah ISP — sebelumnya tidak dibatasi, sehingga tenant dengan 10
+        // dan 10.000 pelanggan membayar harga yang sama.
+        crate::services::resource_limit::enforce(
+            &self.pool,
+            tenant_id,
+            "customers",
+            "max_customers",
+            "pelanggan",
+        )
+        .await?;
+
         let portal_email = dto.portal_email.trim().to_lowercase();
         if portal_email.is_empty() {
             return Err(AppError::Validation("portal_email is required".to_string()));
@@ -1368,6 +1380,18 @@ impl CustomerService {
         ip_address: Option<&str>,
         registration_invite_id: Option<&str>,
     ) -> AppResult<Customer> {
+        // Jalur registrasi publik juga menambah pelanggan, jadi wajib kena
+        // batas plan yang sama — kalau tidak, limit bisa dilewati lewat
+        // formulir pendaftaran mandiri.
+        crate::services::resource_limit::enforce(
+            &self.pool,
+            tenant_id,
+            "customers",
+            "max_customers",
+            "pelanggan",
+        )
+        .await?;
+
         let name = customer_name.trim().to_string();
         if name.len() < 2 {
             return Err(AppError::Validation(
