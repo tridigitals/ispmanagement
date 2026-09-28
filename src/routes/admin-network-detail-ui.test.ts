@@ -9,7 +9,6 @@ function readSource(path: string) {
 describe('admin network detail UI cleanup', () => {
   it('keeps network detail and import surfaces on clean dark tokens', () => {
     const files = [
-      'src/routes/(app)/admin/network/installations/InstallationDetailDialogs.svelte',
       'src/routes/(app)/admin/network/routers/[id]/RouterDetailDialogs.svelte',
       'src/routes/(app)/admin/network/routers/[id]/+page.svelte',
       'src/routes/(app)/admin/network/pppoe/import/+page.svelte',
@@ -28,12 +27,18 @@ describe('admin network detail UI cleanup', () => {
     }
   });
 
-  it('keeps installation detail dialog mobile-first for dense grids', () => {
+  /* InstallationDetailDialogs.svelte sudah dihapus: tidak pernah dirender siapa
+     pun (hanya dimuat oleh modul lazy yang juga tidak dipakai), sementara
+     InstallationDetailModal.svelte adalah dialog yang benar-benar tampil.
+     Penjagaan gaya dialihkan ke file yang hidup supaya tidak mengunci kode mati. */
+  it('keeps the rendered installation detail dialog mobile-first for dense grids', () => {
     const source = readSource(
-      'src/routes/(app)/admin/network/installations/InstallationDetailDialogs.svelte',
+      'src/routes/(app)/admin/network/installations/InstallationDetailModal.svelte',
     );
 
-    expect(source).toMatch(/@media \(max-width: 800px\)[\s\S]*\.meta-grid[\s\S]*grid-template-columns: 1fr/);
-    expect(source).toMatch(/@media \(max-width: 800px\)[\s\S]*\.step-flow[\s\S]*grid-template-columns: 1fr/);
+    /* Breakpoint nyatanya 640px (bukan 800px seperti file mati yang dulu diuji).
+       Tidak dipatok angka persisnya supaya penyesuaian breakpoint yang sah tidak
+       memicu kegagalan palsu — yang penting grid padat benar-benar runtuh. */
+    expect(source).toMatch(/@media \(max-width: \d+px\)[^{]*\{[^}]*\.meta-grid[^}]*grid-template-columns: 1fr/);
   });
 });

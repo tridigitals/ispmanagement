@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/ui/Icon.svelte';
+  import InstallationQuickAssetPanel from '$lib/components/installations/InstallationQuickAssetPanel.svelte';
 
   type TabId = 'info' | 'workflow' | 'onsite' | 'network' | 'timeline';
 
@@ -158,6 +159,21 @@
     else activeTab = 'info';
   });
 
+  /* Nilai turunan untuk InstallationQuickAssetPanel (komponen bersama).
+     `installationQuickAssetDuplicates` datang sebagai prop; validasi bentuk
+     dijalankan di fungsi payload, jadi di sini cukup menggabungkan pesan galat
+     yang sudah tersedia supaya tombol kirim ikut terkunci. */
+  const installationQuickAssetQuickError = $derived(
+    installationQuickAssetDuplicates.serial_number || installationQuickAssetDuplicates.code || null,
+  );
+
+  const quickAssetParentOptionsForPanel = $derived([
+    ...(installationQuickAssetParentOptions.length
+      ? []
+      : [{ value: '', label: tr('admin.network.installations.no_parent_asset', 'No parent asset') }]),
+    ...installationQuickAssetParentOptions,
+  ]);
+
   function onBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeDetail(); }
   function onCancelBackdropKey(e: KeyboardEvent) { if (e.key === 'Escape') closeCancelDialog(); }
 </script>
@@ -297,10 +313,15 @@
               <label><span class="summary-label">{tr('admin.network.installations.parent_asset_optional', 'Parent (Optional)')}</span><select class="input" bind:value={installationParentAssetId} onchange={handleInstallationParentAssetChange}><option value="">{tr('admin.network.installations.no_parent_asset', 'None')}</option>{#each installationParentAssetOptions as option}<option value={option.value}>{option.label}</option>{/each}</select></label>
               <div class="modal-actions"><button class="btn ghost" type="button" onclick={openInstallationQuickAsset}><Icon name="plus" size={14} />{tr('admin.network.installations.quick_create_terminal_asset', 'Create New')}</button></div>
               {#if installationQuickAssetOpen}
-                <section class="quick-asset-card"><div class="quick-asset-head"><strong>{tr('admin.network.installations.quick_create_title', 'Quick Create')}</strong><button class="btn ghost mini" type="button" onclick={closeInstallationQuickAsset}>{tr('common.close', 'Close')}</button></div>
-                  <div class="form-grid two-col compact"><label class="summary-field">{tr('admin.network.installations.quick_asset_type', 'Type')}<select class="input" value={installationQuickAssetDraft.asset_type} onchange={(event) => updateInstallationQuickAssetField('asset_type', (event.currentTarget as HTMLSelectElement).value)}><option value="ont">ONT</option><option value="onu">ONU</option><option value="odp">ODP</option></select></label><label class="summary-field">{tr('admin.network.installations.quick_asset_name', 'Name')}<input class="input" value={installationQuickAssetDraft.name} oninput={(event) => updateInstallationQuickAssetField('name', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_serial', 'Serial')}<input class="input" value={installationQuickAssetDraft.serial_number} oninput={(event) => updateInstallationQuickAssetField('serial_number', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_code', 'Code')}<input class="input" value={installationQuickAssetDraft.code} oninput={(event) => updateInstallationQuickAssetField('code', (event.currentTarget as HTMLInputElement).value)} /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_latitude', 'Latitude')}<input class="input" value={installationQuickAssetDraft.latitude} oninput={(event) => updateInstallationQuickAssetField('latitude', (event.currentTarget as HTMLInputElement).value)} placeholder="-7.235423" /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_longitude', 'Longitude')}<input class="input" value={installationQuickAssetDraft.longitude} oninput={(event) => updateInstallationQuickAssetField('longitude', (event.currentTarget as HTMLInputElement).value)} placeholder="110.419760" /></label><label class="summary-field">{tr('admin.network.installations.quick_asset_parent', 'Parent (ODP, optional)')}<select class="input" value={installationQuickAssetDraft.parent_asset_id} onchange={(event) => updateInstallationQuickAssetField('parent_asset_id', (event.currentTarget as HTMLSelectElement).value)}><option value="">{tr('admin.network.installations.no_parent_asset', 'No parent asset')}</option>{#each installationQuickAssetParentOptions as option (option.value)}<option value={option.value}>{option.label}</option>{/each}</select></label></div><p class="quick-asset-note">{tr('admin.network.installations.quick_asset_from_wo', 'Name and coordinates are pre-filled from the installation data. Edit if needed.')}</p>
-                  <div class="modal-actions"><button class="btn ghost" type="button" onclick={closeInstallationQuickAsset}>{tr('common.cancel', 'Cancel')}</button><button class="btn" type="button" onclick={createInstallationQuickAsset} disabled={installationMutationBusy || !installationQuickAssetCanSubmit}>{creatingInstallationQuickAsset ? '...' : tr('admin.network.installations.quick_create_submit', 'Create')}</button></div>
-                </section>
+                <div class="quick-asset-shared"><InstallationQuickAssetPanel
+                  draft={installationQuickAssetDraft}
+                  error={installationQuickAssetQuickError}
+                  parentOptions={quickAssetParentOptionsForPanel}
+                  busy={creatingInstallationQuickAsset}
+                  onfield={updateInstallationQuickAssetField}
+                  onSubmit={createInstallationQuickAsset}
+                  onCancel={closeInstallationQuickAsset}
+                /></div>
               {/if}
             {/if}
             {#if activeRow.status === 'in_progress'}
@@ -408,13 +429,6 @@
   .status.provisioning-applied, .status.provisioning-applied_queue { border-color: color-mix(in srgb, var(--color-success) 42%, var(--border-color)); color: var(--text-success); }
   .provisioning-error { color: var(--color-danger); white-space: pre-wrap; word-break: break-word; }
   .field-error { color: var(--color-danger); font-size: 0.78rem; }
-  .quick-asset-note {
-    margin: 0.5rem 0 0;
-    color: var(--text-tertiary, #94a3b8);
-    font-size: 0.8rem;
-  }
-
-  .quick-asset-card { border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface); padding: 12px; display: grid; gap: 10px; }
   .quick-asset-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .activation-ready { border: 1px dashed var(--border-color); border-radius: 12px; padding: 12px; display: grid; gap: 6px; }
   .reschedule-request-card { border: 1px solid color-mix(in srgb, var(--color-warning) 42%, var(--border-color)); border-radius: 12px; padding: 12px; display: grid; gap: 6px; background: var(--bg-warning); font-size: 0.9rem; }

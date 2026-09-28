@@ -71,6 +71,8 @@
   import RowActions from '$lib/components/ds/RowActions.svelte';
   import Badge from '$lib/components/ds/Badge.svelte';
   import Button from '$lib/components/ds/Button.svelte';
+  import InstallationQuickAssetPanel from '$lib/components/installations/InstallationQuickAssetPanel.svelte';
+  import { IQA } from '$lib/components/installations/quickAssetPanelStyles';
   import Modal from '$lib/components/ui/Modal.svelte';
   import Field from '$lib/components/ds/Field.svelte';
   import AttentionPanel from '$lib/components/ds/AttentionPanel.svelte';
@@ -857,98 +859,24 @@
             />
 
             {#if !quickAssetOpen}
-              <div class="mt-2">
+              <div class={IQA.triggerRow}>
                 <Button variant="ghost" size="sm" icon="plus" onclick={openQuickAsset}>
                   { $t('admin.network.installations.v2.btn_create_asset') }
                 </Button>
-                <p class="mt-1 text-xs text-ink-500">
+                <p class={IQA.hint}>
                   { $t('admin.network.installations.v2.create_asset_hint') }
                 </p>
               </div>
             {:else if quickAssetDraft}
-              <div class="mt-3 rounded-lg border border-ink-200 p-3">
-                <div class="mb-2 font-medium text-ink-900">
-                  { $t('admin.network.installations.v2.create_asset_title') }
-                </div>
-                <p class="mb-2 text-xs text-ink-500">
-                  { $t('admin.network.installations.v2.create_asset_prefill') }
-                </p>
-                <div class="grid grid-cols-2 gap-2">
-                  <Field
-                    id="qa-type"
-                    label={ $t('admin.network.installations.v2.qa_type') }
-                    type="select"
-                    stacked
-                    value={quickAssetDraft.asset_type}
-                    options={[
-                      { value: 'ont', label: 'ONT' },
-                      { value: 'onu', label: 'ONU' },
-                      { value: 'odp', label: 'ODP' },
-                    ]}
-                    onchange={(v) => updateQuickAsset('asset_type', String(v ?? 'ont'))}
-                  />
-                  <Field
-                    id="qa-name"
-                    label={ $t('admin.network.installations.v2.qa_name') }
-                    stacked
-                    value={quickAssetDraft.name}
-                    onchange={(v) => updateQuickAsset('name', String(v ?? ''))}
-                  />
-                  <Field
-                    id="qa-serial"
-                    label={ $t('admin.network.installations.v2.qa_serial') }
-                    stacked
-                    value={quickAssetDraft.serial_number}
-                    onchange={(v) => updateQuickAsset('serial_number', String(v ?? ''))}
-                  />
-                  <Field
-                    id="qa-code"
-                    label={ $t('admin.network.installations.v2.qa_code') }
-                    stacked
-                    value={quickAssetDraft.code}
-                    onchange={(v) => updateQuickAsset('code', String(v ?? ''))}
-                  />
-                  <Field
-                    id="qa-lat"
-                    label={ $t('admin.network.installations.v2.qa_lat') }
-                    stacked
-                    value={quickAssetDraft.latitude}
-                    onchange={(v) => updateQuickAsset('latitude', String(v ?? ''))}
-                  />
-                  <Field
-                    id="qa-lng"
-                    label={ $t('admin.network.installations.v2.qa_lng') }
-                    stacked
-                    value={quickAssetDraft.longitude}
-                    onchange={(v) => updateQuickAsset('longitude', String(v ?? ''))}
-                  />
-                  <Field
-                    id="qa-parent"
-                    label={ $t('admin.network.installations.v2.qa_parent') }
-                    type="select"
-                    stacked
-                    value={quickAssetDraft.parent_asset_id}
-                    options={quickAssetParentOptions}
-                    onchange={(v) => updateQuickAsset('parent_asset_id', String(v ?? ''))}
-                  />
-                </div>
-                {#if quickAssetError}
-                  <p class="mt-1 text-xs text-rose-600">{quickAssetError}</p>
-                {/if}
-                <div class="mt-3 flex gap-2">
-                  <Button variant="ghost" size="sm" onclick={closeQuickAsset}>
-                    { $t('common.cancel') }
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={quickAssetBusy || !!quickAssetError}
-                    onclick={() => void createQuickAsset()}
-                  >
-                    {quickAssetBusy ? $t('common.loading') : $t('admin.network.installations.v2.qa_submit') }
-                  </Button>
-                </div>
-              </div>
+              <InstallationQuickAssetPanel
+                bind:draft={quickAssetDraft}
+                error={quickAssetError}
+                parentOptions={quickAssetParentOptions}
+                busy={quickAssetBusy}
+                onfield={updateQuickAsset}
+                onSubmit={() => void createQuickAsset()}
+                onCancel={closeQuickAsset}
+              />
             {/if}
           </div>
         {/if}

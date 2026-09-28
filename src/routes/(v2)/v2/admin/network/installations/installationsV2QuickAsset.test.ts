@@ -33,6 +33,16 @@ describe('halaman instalasi v2 bisa membuat aset FTTH', () => {
     expect(src).toContain('buildInstallationQuickAssetPayload');
   });
 
+  it('memakai SATU komponen form bersama, bukan menyalin markup', () => {
+    // Markup form ini dulu terduplikasi di dua halaman dan isinya berbeda —
+    // halaman (app) mengisi nama, v2 sempat tidak. Sekarang satu komponen.
+    expect(src).toContain('InstallationQuickAssetPanel');
+    expect(src).toContain("from '$lib/components/installations/InstallationQuickAssetPanel.svelte'");
+    // Kalau blok markup lama kembali, ini gagal.
+    expect(src).not.toContain('id="qa-lat"');
+    expect(src).not.toContain('id="qa-serial"');
+  });
+
   it('mengisi form dari data instalasi (bukan draf kosong)', () => {
     // Konteks harus diambil dari baris instalasi aktif.
     expect(src).toMatch(/locationLatitude:\s*active\?\.location_latitude/);
@@ -45,8 +55,14 @@ describe('halaman instalasi v2 bisa membuat aset FTTH', () => {
     expect(src).toContain('buildInstallationQuickAssetPayload');
   });
 
-  it('mendukung ODP selain ONT/ONU', () => {
-    expect(src).toMatch(/value:\s*'odp'/);
+  it('mendukung ODP selain ONT/ONU (lewat komponen bersama)', () => {
+    const panel = readFileSync(
+      resolve(process.cwd(), 'src/lib/components/installations/InstallationQuickAssetPanel.svelte'),
+      'utf8',
+    );
+    expect(panel).toMatch(/value:\s*'odp'/);
+    expect(panel).toMatch(/value:\s*'ont'/);
+    expect(panel).toMatch(/value:\s*'onu'/);
   });
 
   it('mengusulkan induk dari node FTTH yang sudah dipilih', () => {
