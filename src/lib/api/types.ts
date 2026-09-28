@@ -694,6 +694,12 @@ export interface InstallationWorkOrderView {
   updated_at: string;
   customer_name: string | null;
   location_label: string | null;
+  /* Koordinat lokasi pelanggan. Backend SUDAH mengirimkannya
+     (work_orders.rs: `l.latitude::float8 AS location_latitude`), tetapi tipe ini
+     dulu tidak memuatnya sehingga nilainya dibuang dan form aset FTTH harus
+     diisi manual. Dipakai untuk mengisi lokasi aset secara otomatis. */
+  location_latitude: number | null;
+  location_longitude: number | null;
   package_name: string | null;
   package_provisioning_type: 'pppoe' | 'dhcp_static' | string | null;
   router_name: string | null;

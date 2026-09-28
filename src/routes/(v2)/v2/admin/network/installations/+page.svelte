@@ -50,6 +50,13 @@
     validateInstallationAssetBinding,
   } from '../../../../../(app)/admin/network/installations/installationAssetBinding';
   import {
+    buildInstallationQuickAssetDraftFromContext,
+    buildInstallationQuickAssetPayload,
+    findInstallationQuickAssetDuplicates,
+    validateInstallationQuickAssetDraft,
+    type InstallationQuickAssetDraft,
+  } from '$lib/utils/installationQuickAsset';
+  import {
     buildInstallationStats,
     filterAndSortInstallationRows,
     type InstallationAssignmentFilter,
@@ -161,6 +168,14 @@
 
   let terminalAssetId = $state('');
   let parentAssetId = $state('');
+
+  /* Buat aset FTTH langsung dari work order ini. Halaman lama (app) punya fitur
+     ini; halaman v2 — yang justru dipakai karena rute lama di-redirect ke sini —
+     hanya menyediakan dropdown. Padahal backend SUDAH mengirim koordinat lokasi
+     (location_latitude/longitude) sehingga form bisa terisi sendiri. */
+  let quickAssetOpen = $state(false);
+  let quickAssetBusy = $state(false);
+  let quickAssetDraft = $state<InstallationQuickAssetDraft | null>(null);
   let timeline = $state<AuditLog[]>([]);
   let timelineLoading = $state(false);
   let reschedule = $state<WorkOrderRescheduleRequestView | null>(null);
@@ -519,6 +534,96 @@
     }
   }
 
+  /* Konteks dari data instalasi: nama pelanggan, label & koordinat lokasi. */
+  function quickAssetContext() {
+    return {
+      customerName: active?.customer_name || '',
+      locationLabel: active?.location_label || '',
+      locationLatitude: active?.location_latitude ?? null,
+      locationLongitude: active?.location_longitude ?? null,
+      locationCode: (active?.location_label || '').trim(),
+    };
+  }
+
+  /* Jalur FTTH yang sudah dipilih saat penjadwalan → usulan induk aset. */
+  const quickAssetParentFromNode = $derived.by(() => {
+    const nodeId = active?.selected_node_id;
+    if (!nodeId) return '';
+    const match = assets.find((asset) => asset.id === nodeId);
+    return match ? match.id : '';
+  });
+
+  const quickAssetParentOptions = $derived.by(() => [
+    { value: '', label: $t('admin.network.installations.v2.opt_none') },
+    ...buildInstallationParentAssetOptions(assets, quickAssetDraft?.parent_asset_id || ''),
+  ]);
+
+  const quickAssetDuplicates = $derived(
+    quickAssetDraft ? findInstallationQuickAssetDuplicates(quickAssetDraft, assets) : {},
+  );
+
+  const quickAssetError = $derived(
+    quickAssetDraft
+      ? validateInstallationQuickAssetDraft(quickAssetDraft) ||
+        quickAssetDuplicates.serial_number ||
+        quickAssetDuplicates.code ||
+        null
+      : null,
+  );
+
+  function openQuickAsset() {
+    const base = buildInstallationQuickAssetDraftFromContext({
+      assetType: 'ont',
+      context: quickAssetContext(),
+    });
+    quickAssetDraft = { ...base, parent_asset_id: quickAssetParentFromNode };
+    quickAssetOpen = true;
+  }
+
+  function closeQuickAsset() {
+    quickAssetOpen = false;
+    quickAssetDraft = null;
+  }
+
+  function updateQuickAsset(field: keyof InstallationQuickAssetDraft, value: string) {
+    if (!quickAssetDraft) return;
+    quickAssetDraft = { ...quickAssetDraft, [field]: value };
+  }
+
+  async function createQuickAsset() {
+    if (!active || !quickAssetDraft || quickAssetBusy) return;
+    const err = quickAssetError;
+    if (err) {
+      toast.error(err);
+      return;
+    }
+    quickAssetBusy = true;
+    try {
+      const created = await api.networkAssets.create(
+        buildInstallationQuickAssetPayload({
+          draft: {
+            ...quickAssetDraft,
+            parent_asset_id: quickAssetDraft.parent_asset_id || quickAssetParentFromNode,
+          },
+          customer_id: active.customer_id,
+          location_id: active.location_id,
+          work_order_id: active.id,
+          notes: `Dibuat dari work order instalasi ${active.id}`,
+        }),
+      );
+      // Muat ulang daftar aset, lalu langsung pilih hasilnya.
+      const refreshed = await api.networkAssets.list({ page: 1, per_page: 500 });
+      assets = refreshed.data || [];
+      terminalAssetId = created.id;
+      closeQuickAsset();
+      toast.success($t('admin.network.installations.v2.t_asset_created') || 'Aset FTTH dibuat.');
+    } catch (e) {
+      toast.error(extractApiErrorMessage(e));
+    } finally {
+      quickAssetBusy = false;
+    }
+  }
+
   const terminalOptions = $derived(active ? buildInstallationTerminalAssetOptions(assets, active, terminalAssetId) : []);
   const parentOptions = $derived(active ? buildInstallationParentAssetOptions(assets, parentAssetId) : []);
   const bindingError = $derived(active ? validateInstallationAssetBinding(active, { terminal_asset_id: terminalAssetId, parent_asset_id: parentAssetId }) : null);
@@ -750,6 +855,101 @@
               options={[{ value: '', label: $t('admin.network.installations.v2.opt_none') }, ...parentOptions]}
               onchange={(v) => (parentAssetId = String(v ?? ''))}
             />
+
+            {#if !quickAssetOpen}
+              <div class="mt-2">
+                <Button variant="ghost" size="sm" icon="plus" onclick={openQuickAsset}>
+                  { $t('admin.network.installations.v2.btn_create_asset') }
+                </Button>
+                <p class="mt-1 text-xs text-ink-500">
+                  { $t('admin.network.installations.v2.create_asset_hint') }
+                </p>
+              </div>
+            {:else if quickAssetDraft}
+              <div class="mt-3 rounded-lg border border-ink-200 p-3">
+                <div class="mb-2 font-medium text-ink-900">
+                  { $t('admin.network.installations.v2.create_asset_title') }
+                </div>
+                <p class="mb-2 text-xs text-ink-500">
+                  { $t('admin.network.installations.v2.create_asset_prefill') }
+                </p>
+                <div class="grid grid-cols-2 gap-2">
+                  <Field
+                    id="qa-type"
+                    label={ $t('admin.network.installations.v2.qa_type') }
+                    type="select"
+                    stacked
+                    value={quickAssetDraft.asset_type}
+                    options={[
+                      { value: 'ont', label: 'ONT' },
+                      { value: 'onu', label: 'ONU' },
+                      { value: 'odp', label: 'ODP' },
+                    ]}
+                    onchange={(v) => updateQuickAsset('asset_type', String(v ?? 'ont'))}
+                  />
+                  <Field
+                    id="qa-name"
+                    label={ $t('admin.network.installations.v2.qa_name') }
+                    stacked
+                    value={quickAssetDraft.name}
+                    onchange={(v) => updateQuickAsset('name', String(v ?? ''))}
+                  />
+                  <Field
+                    id="qa-serial"
+                    label={ $t('admin.network.installations.v2.qa_serial') }
+                    stacked
+                    value={quickAssetDraft.serial_number}
+                    onchange={(v) => updateQuickAsset('serial_number', String(v ?? ''))}
+                  />
+                  <Field
+                    id="qa-code"
+                    label={ $t('admin.network.installations.v2.qa_code') }
+                    stacked
+                    value={quickAssetDraft.code}
+                    onchange={(v) => updateQuickAsset('code', String(v ?? ''))}
+                  />
+                  <Field
+                    id="qa-lat"
+                    label={ $t('admin.network.installations.v2.qa_lat') }
+                    stacked
+                    value={quickAssetDraft.latitude}
+                    onchange={(v) => updateQuickAsset('latitude', String(v ?? ''))}
+                  />
+                  <Field
+                    id="qa-lng"
+                    label={ $t('admin.network.installations.v2.qa_lng') }
+                    stacked
+                    value={quickAssetDraft.longitude}
+                    onchange={(v) => updateQuickAsset('longitude', String(v ?? ''))}
+                  />
+                  <Field
+                    id="qa-parent"
+                    label={ $t('admin.network.installations.v2.qa_parent') }
+                    type="select"
+                    stacked
+                    value={quickAssetDraft.parent_asset_id}
+                    options={quickAssetParentOptions}
+                    onchange={(v) => updateQuickAsset('parent_asset_id', String(v ?? ''))}
+                  />
+                </div>
+                {#if quickAssetError}
+                  <p class="mt-1 text-xs text-rose-600">{quickAssetError}</p>
+                {/if}
+                <div class="mt-3 flex gap-2">
+                  <Button variant="ghost" size="sm" onclick={closeQuickAsset}>
+                    { $t('common.cancel') }
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={quickAssetBusy || !!quickAssetError}
+                    onclick={() => void createQuickAsset()}
+                  >
+                    {quickAssetBusy ? $t('common.loading') : $t('admin.network.installations.v2.qa_submit') }
+                  </Button>
+                </div>
+              </div>
+            {/if}
           </div>
         {/if}
 

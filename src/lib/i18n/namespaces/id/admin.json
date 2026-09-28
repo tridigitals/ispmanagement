@@ -3105,8 +3105,25 @@
         "t_reject": "Permintaan ditolak.",
         "t_photo": "Foto terunggah.",
         "t_vis": "Visibilitas tersimpan.",
-        "resched_decision": "Catatan keputusan"
-      }
+        "resched_decision": "Catatan keputusan",
+        "btn_create_asset": "Buat aset FTTH",
+        "create_asset_hint": "Nama & koordinat otomatis terisi dari data instalasi.",
+        "create_asset_title": "Buat aset FTTH dari instalasi ini",
+        "create_asset_prefill": "Terisi otomatis dari work order — ubah bila perlu.",
+        "qa_type": "Tipe",
+        "qa_name": "Nama aset",
+        "qa_serial": "Nomor seri",
+        "qa_code": "Kode",
+        "qa_lat": "Lintang",
+        "qa_lng": "Bujur",
+        "qa_parent": "Induk (ODP, opsional)",
+        "qa_submit": "Buat & pilih",
+        "t_asset_created": "Aset FTTH dibuat dan dipilih."
+      },
+      "quick_asset_latitude": "Lintang",
+      "quick_asset_longitude": "Bujur",
+      "quick_asset_parent": "Induk (ODP, opsional)",
+      "quick_asset_from_wo": "Nama dan koordinat terisi otomatis dari data instalasi. Ubah bila perlu."
     },
     "logs": {
       "title": "Log Router",

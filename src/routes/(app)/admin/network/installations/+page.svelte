@@ -64,13 +64,15 @@
   import {
     applyInstallationQuickAssetInputChange,
     buildDefaultInstallationQuickAssetDraft,
+    buildInstallationQuickAssetDraftFromContext,
     buildInstallationQuickAssetPayload,
     buildInstallationQuickAssetSuggestedName,
     findInstallationQuickAssetDuplicates,
     syncInstallationQuickAssetDraftOnTypeChange,
     validateInstallationQuickAssetDraft,
     type InstallationQuickAssetDraft,
-  } from './installationQuickAsset';
+    type InstallationQuickAssetType,
+  } from '$lib/utils/installationQuickAsset';
   import InstallationDetailModal from './InstallationDetailModal.svelte';
 
   let loading = $state(true);
@@ -193,6 +195,11 @@
   const installationQuickAssetDuplicates = $derived.by(() =>
     findInstallationQuickAssetDuplicates(installationQuickAssetDraft, installationAssetRows),
   );
+  /** Opsi ODP/ODC induk untuk dipilih teknisi (opsional). */
+  const installationQuickAssetParentOptions = $derived.by(() =>
+    buildInstallationParentAssetOptions(installationAssetRows, installationQuickAssetDraft.parent_asset_id),
+  );
+
   const installationQuickAssetCanSubmit = $derived.by(
     () =>
       !creatingInstallationQuickAsset &&
@@ -1041,16 +1048,44 @@
     return true;
   }
 
-  function openInstallationQuickAsset() {
-    installationQuickAssetOpen = true;
-    installationQuickAssetDraft = {
-      ...buildDefaultInstallationQuickAssetDraft(),
-      name: buildInstallationQuickAssetSuggestedName({
-        assetType: 'ont',
-        customerName: activeRow?.customer_name || '',
-        locationLabel: activeRow?.location_label || '',
-      }),
+  /**
+   * Konteks instalasi untuk mengisi form aset otomatis. Semua diambil dari work
+   * order yang sudah dibuka — teknisi tidak perlu mengetik ulang data yang sudah
+   * ada di sistem.
+   */
+  function buildQuickAssetContext() {
+    return {
+      customerName: activeRow?.customer_name || '',
+      locationLabel: activeRow?.location_label || '',
+      locationLatitude: activeRow?.location_latitude ?? null,
+      locationLongitude: activeRow?.location_longitude ?? null,
+      locationCode: (activeRow?.location_label || '').trim(),
     };
+  }
+
+  /**
+   * ODP induk dari node FTTH yang sudah dipilih saat penjadwalan instalasi.
+   *
+   * `network_nodes.metadata.asset_id` menunjuk ke record `network_assets`, jadi
+   * jalur FTTH yang dipilih pada work order bisa dipakai sebagai parent aset
+   * tanpa memilih ulang secara manual.
+   */
+  const quickAssetParentFromNode = $derived.by(() => {
+    const nodeId = activeRow?.selected_node_id;
+    if (!nodeId) return '';
+    const match = installationAssetRows.find((asset) => asset.id === nodeId);
+    return match ? match.id : '';
+  });
+
+  function openInstallationQuickAsset() {
+    installationQuickAssetDraft = {
+      ...buildInstallationQuickAssetDraftFromContext({
+        assetType: 'ont',
+        context: buildQuickAssetContext(),
+      }),
+      parent_asset_id: quickAssetParentFromNode,
+    };
+    installationQuickAssetOpen = true;
   }
 
   function closeInstallationQuickAsset() {
@@ -1073,13 +1108,17 @@
     }
     creatingInstallationQuickAsset = true;
     try {
+      const draftWithParent: InstallationQuickAssetDraft = {
+        ...installationQuickAssetDraft,
+        parent_asset_id: installationQuickAssetDraft.parent_asset_id || quickAssetParentFromNode,
+      };
       const created = await api.networkAssets.create(
         buildInstallationQuickAssetPayload({
-          draft: installationQuickAssetDraft,
+          draft: draftWithParent,
           customer_id: activeRow.customer_id,
           location_id: activeRow.location_id,
           work_order_id: activeRow.id,
-          notes: `Created from installation work order ${activeRow.id}`,
+          notes: `Dibuat dari work order instalasi ${activeRow.id}`,
         }),
       );
       await loadInstallationAssetContext(activeRow);
@@ -1098,12 +1137,11 @@
     field: keyof InstallationQuickAssetDraft,
     value: string,
   ) {
-    if (field === 'asset_type' && (value === 'ont' || value === 'onu')) {
+    if (field === 'asset_type') {
       installationQuickAssetDraft = syncInstallationQuickAssetDraftOnTypeChange({
         draft: installationQuickAssetDraft,
-        nextAssetType: value,
-        customerName: activeRow?.customer_name || '',
-        locationLabel: activeRow?.location_label || '',
+        nextAssetType: value as InstallationQuickAssetType,
+        context: buildQuickAssetContext(),
       });
       return;
     }
@@ -2469,6 +2507,7 @@
       bind:installationQuickAssetDraft
       {installationQuickAssetDuplicates}
       {installationQuickAssetCanSubmit}
+      {installationQuickAssetParentOptions}
       {openInstallationQuickAsset}
       {closeInstallationQuickAsset}
       {createInstallationQuickAsset}

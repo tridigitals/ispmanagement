@@ -59,6 +59,8 @@ function row(overrides: Partial<InstallationWorkOrderView>): InstallationWorkOrd
     updated_at: '2026-05-11T00:00:00Z',
     customer_name: 'Alpha',
     location_label: 'Home',
+    location_latitude: -7.235423,
+    location_longitude: 110.41976,
     package_name: 'FTTH 30M',
     package_provisioning_type: 'pppoe',
     router_name: null,

@@ -95,6 +95,7 @@
     installationQuickAssetDraft = $bindable(),
     installationQuickAssetDuplicates = {},
     installationQuickAssetCanSubmit = true,
+    installationQuickAssetParentOptions = [] as { value: string; label: string }[],
     openInstallationQuickAsset,
     closeInstallationQuickAsset,
     createInstallationQuickAsset,
@@ -739,6 +740,7 @@
                       >
                         <option value="ont">ONT</option>
                         <option value="onu">ONU</option>
+                        <option value="odp">ODP</option>
                       </select>
                     </label>
                     <label class="summary-field">
@@ -812,7 +814,58 @@
                         placeholder="F670L"
                       />
                     </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_latitude', 'Lintang')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.latitude}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'latitude',
+                            (event.currentTarget as HTMLInputElement).value,
+                          )}
+                        placeholder="-7.235423"
+                      />
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_longitude', 'Bujur')}
+                      <input
+                        class="input"
+                        value={installationQuickAssetDraft.longitude}
+                        oninput={(event) =>
+                          updateInstallationQuickAssetField(
+                            'longitude',
+                            (event.currentTarget as HTMLInputElement).value,
+                          )}
+                        placeholder="110.419760"
+                      />
+                    </label>
+                    <label class="summary-field">
+                      {tr('admin.network.installations.quick_asset_parent', 'Induk (ODP, opsional)')}
+                      <select
+                        class="input"
+                        value={installationQuickAssetDraft.parent_asset_id}
+                        onchange={(event) =>
+                          updateInstallationQuickAssetField(
+                            'parent_asset_id',
+                            (event.currentTarget as HTMLSelectElement).value,
+                          )}
+                      >
+                        <option value="">
+                          {tr('admin.network.installations.no_parent_asset', 'Tanpa asset parent')}
+                        </option>
+                        {#each installationQuickAssetParentOptions as option (option.value)}
+                          <option value={option.value}>{option.label}</option>
+                        {/each}
+                      </select>
+                    </label>
                   </div>
+                  <p class="quick-asset-note">
+                    {tr(
+                      'admin.network.installations.quick_asset_from_wo',
+                      'Nama dan koordinat terisi otomatis dari data instalasi. Ubah bila perlu.',
+                    )}
+                  </p>
                   <div class="modal-actions">
                     <button class="btn ghost" type="button" onclick={closeInstallationQuickAsset}>
                       {tr('common.cancel', 'Cancel')}
@@ -1151,6 +1204,12 @@
   .progress-inline { margin-left: 8px; font-size: 0.78rem; color: var(--color-primary); font-weight: 700; }
   .activation-ready { border: 1px dashed var(--border-color); border-radius: 12px; padding: 12px; display: grid; gap: 8px; color: var(--text-primary); font-size: 0.9rem; background: var(--bg-surface); }
   .quick-asset-card { border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-surface); padding: 12px; display: grid; gap: 12px; }
+  .quick-asset-note {
+    margin: 0.5rem 0 0;
+    color: var(--text-tertiary, #94a3b8);
+    font-size: 0.8rem;
+  }
+
   .quick-asset-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .check-item { border: 1px solid var(--border-color); background: var(--bg-surface); border-radius: 10px; padding: 10px; cursor: pointer; gap: 10px !important; align-items: flex-start !important; transition: border-color 140ms ease, background 140ms ease; display: flex; }
   .check-item:hover { border-color: var(--color-primary); background: var(--bg-hover); }

@@ -3506,8 +3506,25 @@
         "t_reject": "Request rejected.",
         "t_photo": "Photos uploaded.",
         "t_vis": "Visibility saved.",
-        "resched_decision": "Decision notes"
-      }
+        "resched_decision": "Decision notes",
+        "btn_create_asset": "Create FTTH asset",
+        "create_asset_hint": "Name & coordinates are pre-filled from the installation data.",
+        "create_asset_title": "Create FTTH asset from this installation",
+        "create_asset_prefill": "Pre-filled from the work order — edit if needed.",
+        "qa_type": "Type",
+        "qa_name": "Asset name",
+        "qa_serial": "Serial number",
+        "qa_code": "Code",
+        "qa_lat": "Latitude",
+        "qa_lng": "Longitude",
+        "qa_parent": "Parent (ODP, optional)",
+        "qa_submit": "Create & select",
+        "t_asset_created": "FTTH asset created and selected."
+      },
+      "quick_asset_latitude": "Latitude",
+      "quick_asset_longitude": "Longitude",
+      "quick_asset_parent": "Parent (ODP, optional)",
+      "quick_asset_from_wo": "Name and coordinates are pre-filled from the installation data. Edit if needed."
     },
     "logs": {
       "title": "Router Logs",

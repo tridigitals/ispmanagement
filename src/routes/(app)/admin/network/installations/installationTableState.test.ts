@@ -28,6 +28,8 @@ function row(overrides: Partial<InstallationWorkOrderView>): InstallationWorkOrd
     updated_at: '2026-05-08T02:00:00Z',
     customer_name: 'Alpha',
     location_label: 'Site A',
+    location_latitude: null,
+    location_longitude: null,
     package_name: 'Package A',
     package_provisioning_type: 'pppoe',
     router_name: null,
