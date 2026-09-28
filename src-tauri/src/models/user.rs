@@ -66,7 +66,10 @@ impl User {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
-            email,
+            // Dinormalkan di konstruktor: semua INSERT yang memakai User::new
+            // otomatis menyimpan email lowercase. Ini choke point yang paling
+            // murah — satu titik, bukan belasan jalur panggil.
+            email: crate::services::email_normalize::normalize_email(&email),
             password_hash,
             name,
             role: "user".to_string(),

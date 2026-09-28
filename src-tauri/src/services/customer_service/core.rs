@@ -1197,7 +1197,7 @@ impl CustomerService {
         #[cfg(feature = "postgres")]
         {
             let existing: Option<String> =
-                sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
+                sqlx::query_scalar("SELECT id FROM users WHERE lower(email) = lower($1)")
                     .bind(&portal_email)
                     .fetch_optional(&mut *tx)
                     .await?;
@@ -1229,7 +1229,7 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                VALUES ($1, lower($2), $3, $4, $5, $6, $7, $8, $9)
                 "#,
             )
             .bind(&user_id)
@@ -1271,7 +1271,7 @@ impl CustomerService {
         #[cfg(feature = "sqlite")]
         {
             let existing: Option<String> =
-                sqlx::query_scalar("SELECT id FROM users WHERE email = ?")
+                sqlx::query_scalar("SELECT id FROM users WHERE lower(email) = lower(?)")
                     .bind(&portal_email)
                     .fetch_optional(&mut *tx)
                     .await?;
@@ -1303,7 +1303,7 @@ impl CustomerService {
             sqlx::query(
                 r#"
                 INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, lower(?), ?, ?, ?, ?, ?, ?, ?)
                 "#,
             )
             .bind(&user_id)

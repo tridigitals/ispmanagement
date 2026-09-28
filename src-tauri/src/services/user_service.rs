@@ -218,7 +218,7 @@ impl UserService {
         ip_address: Option<&str>,
     ) -> AppResult<UserResponse> {
         // Check if email already exists
-        let existing: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
+        let existing: Option<User> = sqlx::query_as("SELECT * FROM users WHERE lower(email) = lower($1)")
             .bind(&dto.email)
             .fetch_optional(&self.pool)
             .await?;
@@ -295,7 +295,7 @@ impl UserService {
         if let Some(email) = dto.email {
             // Check if email is taken by another user
             let existing: Option<User> =
-                sqlx::query_as("SELECT * FROM users WHERE email = $1 AND id != $2")
+                sqlx::query_as("SELECT * FROM users WHERE lower(email) = lower($1) AND id != $2")
                     .bind(&email)
                     .bind(id)
                     .fetch_optional(&self.pool)
@@ -330,7 +330,7 @@ impl UserService {
 
         let query = sqlx::query(
             r#"
-            UPDATE users SET email = $1, name = $2, role = $3, is_super_admin = $4, is_active = $5, phone = $6, updated_at = $7
+            UPDATE users SET email = lower($1), name = $2, role = $3, is_super_admin = $4, is_active = $5, phone = $6, updated_at = $7
             WHERE id = $8
             "#,
         )

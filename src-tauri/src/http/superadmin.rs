@@ -1260,8 +1260,9 @@ pub async fn create_tenant(
     let user = crate::models::User::new(payload.owner_email, password_hash, "Admin".to_string());
 
     // Check if email exists
-    let user_exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM users WHERE email = $1")
-        .bind(&user.email)
+    let user_exists: bool =
+        sqlx::query_scalar("SELECT count(*) > 0 FROM users WHERE lower(email) = lower($1)")
+            .bind(&user.email)
         .fetch_one(&state.auth_service.pool)
         .await?;
 

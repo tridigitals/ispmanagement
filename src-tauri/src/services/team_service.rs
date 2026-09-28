@@ -315,12 +315,21 @@ impl TeamService {
             }
         }
 
-        // 1. Check if user exists
-        let existing_user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
-            .bind(email)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(|e| e.to_string())?;
+        // Email dinormalkan SEBELUM apa pun: ia dipakai untuk mencari user
+        // lama, dan (bila baru) disimpan. Tanpa ini, "Dodo@gmail.com" membuat
+        // baris baru yang berbeda dari "dodo@gmail.com" (UNIQUE Postgres
+        // case-sensitive), dan login selalu mencari bentuk lowercase sehingga
+        // akun ber-huruf-besar tidak pernah bisa masuk.
+        let email = crate::services::email_normalize::normalize_email(email);
+
+        // 1. Check if user exists (case-insensitive: data lama bisa tersimpan
+        //    dengan huruf besar).
+        let existing_user: Option<User> =
+            sqlx::query_as("SELECT * FROM users WHERE lower(email) = lower($1)")
+                .bind(&email)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
 
         let created_user = existing_user.is_none();
         let user_id = if let Some(user) = existing_user {
@@ -356,7 +365,7 @@ impl TeamService {
             #[cfg(feature = "postgres")]
             sqlx::query(query)
                 .bind(&new_id)
-                .bind(email)
+                .bind(&email)
                 .bind(name)
                 .bind(hash)
                 .bind(set_active)
@@ -370,7 +379,7 @@ impl TeamService {
             #[cfg(feature = "sqlite")]
             sqlx::query(query)
                 .bind(&new_id)
-                .bind(email)
+                .bind(&email)
                 .bind(name)
                 .bind(hash)
                 .bind(set_active)

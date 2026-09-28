@@ -87,9 +87,10 @@ impl<'a> DbFactory<'a> {
         is_super_admin: bool,
     ) -> Result<String> {
         #[cfg(feature = "postgres")]
-        let q = "SELECT id FROM users WHERE email = $1";
+        // Case-insensitive: data lama bisa tersimpan dengan huruf besar.
+        let q = "SELECT id FROM users WHERE lower(email) = lower($1)";
         #[cfg(feature = "sqlite")]
-        let q = "SELECT id FROM users WHERE email = ?";
+        let q = "SELECT id FROM users WHERE lower(email) = lower(?)";
 
         if let Some(id) = sqlx::query_scalar::<_, String>(q)
             .bind(email)
@@ -113,7 +114,7 @@ impl<'a> DbFactory<'a> {
                     id, email, password_hash, name, role, is_super_admin, is_active,
                     failed_login_attempts, created_at, updated_at, email_verified_at
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,true,0,$7,$8,$9)
+                VALUES ($1,lower($2),$3,$4,$5,$6,true,0,$7,$8,$9)
             "#,
             )
             .bind(&id)
@@ -139,7 +140,7 @@ impl<'a> DbFactory<'a> {
                     id, email, password_hash, name, role, is_super_admin, is_active,
                     failed_login_attempts, created_at, updated_at, email_verified_at
                 )
-                VALUES (?,?,?,?,?,?,1,0,?,?,?)
+                VALUES (?,lower(?),?,?,?,?,1,0,?,?,?)
             "#,
             )
             .bind(&id)

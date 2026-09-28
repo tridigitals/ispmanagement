@@ -666,8 +666,9 @@ impl AuthService {
         }
 
         // Check if user exists
-        let existing: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
-            .bind(&dto.email)
+        let existing: Option<User> =
+            sqlx::query_as("SELECT * FROM users WHERE lower(email) = lower($1)")
+                .bind(&dto.email)
             .fetch_optional(&self.pool)
             .await?;
 
@@ -887,10 +888,11 @@ impl AuthService {
 
     /// Request password reset
     pub async fn forgot_password(&self, email: &str) -> AppResult<()> {
-        let user: Option<User> = sqlx::query_as("SELECT * FROM users WHERE email = $1")
-            .bind(email)
-            .fetch_optional(&self.pool)
-            .await?;
+        let user: Option<User> =
+            sqlx::query_as("SELECT * FROM users WHERE lower(email) = lower($1)")
+                .bind(email)
+                .fetch_optional(&self.pool)
+                .await?;
 
         if let Some(user) = user {
             // Generate reset token
@@ -1027,7 +1029,7 @@ impl AuthService {
 
         // Find user by email OR phone
         let user: Option<User> = if let Some(email_val) = &query_email {
-            sqlx::query_as("SELECT * FROM users WHERE email = $1")
+            sqlx::query_as("SELECT * FROM users WHERE lower(email) = lower($1)")
                 .bind(email_val)
                 .fetch_optional(&self.pool)
                 .await?

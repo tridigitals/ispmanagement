@@ -1169,8 +1169,9 @@ pub async fn create_tenant(
     let user = crate::models::User::new(owner_email.clone(), password_hash, "Admin".to_string());
 
     // Check if email exists
-    let user_exists: bool = sqlx::query_scalar("SELECT count(*) > 0 FROM users WHERE email = $1")
-        .bind(&user.email)
+    let user_exists: bool =
+        sqlx::query_scalar("SELECT count(*) > 0 FROM users WHERE lower(email) = lower($1)")
+            .bind(&user.email)
         .fetch_one(&auth_service.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -1210,9 +1211,13 @@ pub async fn create_tenant(
 
     // 2. Create User
     #[cfg(feature = "postgres")]
-    let sql_u = "INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+    // Email dipaksa lowercase di SQL. Lapisan ini penting karena UNIQUE
+    // Postgres case-sensitive: tanpa ini "Dodo@x.com" dan "dodo@x.com" bisa
+    // menjadi dua akun, dan yang ber-huruf-besar tidak akan pernah bisa login
+    // (login mencari bentuk lowercase).
+    let sql_u = "INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at) VALUES ($1, lower($2), $3, $4, $5, $6, $7, $8, $9)";
     #[cfg(feature = "sqlite")]
-    let sql_u = "INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    let sql_u = "INSERT INTO users (id, email, password_hash, name, role, is_super_admin, is_active, created_at, updated_at) VALUES (?, lower(?), ?, ?, ?, ?, ?, ?, ?)";
 
     let q_u = sqlx::query(sql_u)
         .bind(&user.id)
