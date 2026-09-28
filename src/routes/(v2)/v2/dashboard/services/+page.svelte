@@ -22,7 +22,7 @@
   } from '$lib/api/client';
   import { appSettings } from '$lib/stores/settings';
   import { fetchAllRows } from '$lib/utils/fetchAllPages';
-  import { loadDashboardServicesTrackerModal } from '../../../../(app)/dashboard/services/dashboardServicesPageModules';
+  import { loadDashboardServicesTrackerModal } from '$lib/utils/dashboardServicesPageModules';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import Card from '$lib/components/ds/Card.svelte';

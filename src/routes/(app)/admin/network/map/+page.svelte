@@ -108,10 +108,10 @@
     validateNetworkAssetDetailDraft,
     type NetworkAssetDetailDraft,
   } from '$lib/utils/networkAssetDetails';
-  import { parseNetworkAssetMapTarget } from '../assets/networkAssetMapNavigation';
-  import { loadNetworkAssetFormModal } from '../assets/networkAssetsPageModules';
-  import { parseNetworkAssetCoordinates } from '../assets/networkAssetCoordinates';
-  import { buildNetworkAssetSavePayload } from '../assets/networkAssetsPageState';
+  import { parseNetworkAssetMapTarget } from '$lib/utils/networkAssetMapNavigation';
+  import { loadNetworkAssetFormModal } from '$lib/utils/networkAssetsPageModules';
+  import { parseNetworkAssetCoordinates } from '$lib/utils/networkAssetCoordinates';
+  import { buildNetworkAssetSavePayload } from '$lib/utils/networkAssetsPageState';
   import {
     asNumber,
     customersToFeatureCollection,

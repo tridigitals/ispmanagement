@@ -11,15 +11,15 @@ vi.mock('$lib/components/billing/TenantBillingPlanPanel.svelte', () => ({
   default: sentinels.billingPlanPanel,
 }));
 
-vi.mock('./SettingsEmailTab.svelte', () => ({
+vi.mock('$lib/components/settings/SettingsEmailTab.svelte', () => ({
   default: sentinels.emailTab,
 }));
 
-vi.mock('./SettingsPaymentTab.svelte', () => ({
+vi.mock('$lib/components/settings/SettingsPaymentTab.svelte', () => ({
   default: sentinels.paymentTab,
 }));
 
-vi.mock('./SettingsServiceTab.svelte', () => ({
+vi.mock('$lib/components/settings/SettingsServiceTab.svelte', () => ({
   default: sentinels.serviceTab,
 }));
 

@@ -12,7 +12,7 @@ function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<
 }
 
 export const loadDashboardServicesTrackerModal = createCachedLoader(async () => {
-  const { default: TrackerModalComponent } = await import('./DashboardServicesTrackerModal.svelte');
+  const { default: TrackerModalComponent } = await import('$lib/components/dashboard/DashboardServicesTrackerModal.svelte');
 
   return {
     TrackerModalComponent,

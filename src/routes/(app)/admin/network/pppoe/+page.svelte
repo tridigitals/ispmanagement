@@ -28,7 +28,7 @@
   } from '$lib/utils/pppoeSource';
   import { appendBackParam } from '$lib/utils/backNavigation';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
-  import { loadPppoeAccountModal } from './pppoePageModules';
+  import { loadPppoeAccountModal } from '$lib/utils/pppoePageModules';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   type RouterRow = { id: string; name: string; host?: string; port?: number };

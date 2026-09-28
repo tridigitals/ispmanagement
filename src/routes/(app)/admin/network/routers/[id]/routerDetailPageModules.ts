@@ -13,7 +13,7 @@ function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<
 }
 
 export const loadRouterDetailDialogs = createCachedLoader(async () => {
-  const { default: RouterDetailDialogsComponent } = await import('./RouterDetailDialogs.svelte');
+  const { default: RouterDetailDialogsComponent } = await import('$lib/components/network/RouterDetailDialogs.svelte');
 
   return {
     RouterDetailDialogsComponent: RouterDetailDialogsComponent as DeferredComponent,

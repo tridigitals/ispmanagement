@@ -4,7 +4,7 @@ const sentinels = vi.hoisted(() => ({
   routerDetailDialogs: { name: 'router-detail-dialogs' },
 }));
 
-vi.mock('./RouterDetailDialogs.svelte', () => ({
+vi.mock('$lib/components/network/RouterDetailDialogs.svelte', () => ({
   default: sentinels.routerDetailDialogs,
 }));
 

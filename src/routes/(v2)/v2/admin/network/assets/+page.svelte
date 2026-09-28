@@ -34,20 +34,20 @@
   } from '$lib/utils/networkAssetDetails';
   import { getNetworkAssetPortOccupancySummary } from '$lib/utils/networkAssetOccupancy';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-  import NetworkAssetFormModal from '../../../../../(app)/admin/network/assets/NetworkAssetFormModal.svelte';
+  import NetworkAssetFormModal from '$lib/components/network/NetworkAssetFormModal.svelte';
   import {
     buildNetworkAssetRelationText,
     buildNetworkAssetSavePayload,
     buildNetworkAssetStats,
     buildNetworkAssetTopologyText,
     filterNetworkAssets,
-  } from '../../../../../(app)/admin/network/assets/networkAssetsPageState';
-  import { buildNetworkAssetConnectionItems } from '../../../../../(app)/admin/network/assets/networkAssetConnections';
+  } from '$lib/utils/networkAssetsPageState';
+  import { buildNetworkAssetConnectionItems } from '$lib/utils/networkAssetConnections';
   import {
     formatNetworkAssetCoordinates,
     parseNetworkAssetCoordinates,
-  } from '../../../../../(app)/admin/network/assets/networkAssetCoordinates';
-  import { buildNetworkAssetMapUrl } from '../../../../../(app)/admin/network/assets/networkAssetMapNavigation';
+  } from '$lib/utils/networkAssetCoordinates';
+  import { buildNetworkAssetMapUrl } from '$lib/utils/networkAssetMapNavigation';
   import {
     AppShell,
     Badge,

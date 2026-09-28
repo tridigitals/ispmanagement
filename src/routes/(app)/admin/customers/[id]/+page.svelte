@@ -73,7 +73,7 @@
     buildCustomerBillingStats,
     filterCustomerBillingRows,
     type CustomerBillingFilter,
-  } from './customerBillingState';
+  } from '$lib/utils/customerBillingState';
 
   const customerId = $derived(String($page.params.id || ''));
   type DeferredComponent = Component<any>;

@@ -12,10 +12,10 @@ function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<
   };
 }
 
-export const loadNetworkAssetFormModal = createCachedLoader(async () => {
-  const { default: NetworkAssetFormModalComponent } = await import('./NetworkAssetFormModal.svelte');
+export const loadLocationFormModal = createCachedLoader(async () => {
+  const { default: LocationFormModalComponent } = await import('$lib/components/dashboard/LocationFormModal.svelte');
 
   return {
-    NetworkAssetFormModalComponent: NetworkAssetFormModalComponent as DeferredComponent,
+    LocationFormModalComponent: LocationFormModalComponent as DeferredComponent,
   };
 });

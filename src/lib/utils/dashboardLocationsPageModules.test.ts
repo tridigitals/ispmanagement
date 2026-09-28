@@ -4,7 +4,7 @@ const sentinels = vi.hoisted(() => ({
   locationFormModal: { name: 'location-form-modal' },
 }));
 
-vi.mock('./LocationFormModal.svelte', () => ({
+vi.mock('$lib/components/dashboard/LocationFormModal.svelte', () => ({
   default: sentinels.locationFormModal,
 }));
 

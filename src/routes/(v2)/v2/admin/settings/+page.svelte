@@ -221,9 +221,9 @@
   const PANEL_LOADERS: Record<PanelId, () => Promise<{ default: Component<any> }>> = {
     branding: () => import('$lib/components/settings/BrandingPanel.svelte'),
     billing_plan: () => import('$lib/components/billing/TenantBillingPlanPanel.svelte'),
-    email: () => import('../../../../(app)/admin/settings/SettingsEmailTab.svelte'),
-    payment: () => import('../../../../(app)/admin/settings/SettingsPaymentTab.svelte'),
-    service: () => import('../../../../(app)/admin/settings/SettingsServiceTab.svelte'),
+    email: () => import('$lib/components/settings/SettingsEmailTab.svelte'),
+    payment: () => import('$lib/components/settings/SettingsPaymentTab.svelte'),
+    service: () => import('$lib/components/settings/SettingsServiceTab.svelte'),
     whatsapp: () => import('$lib/components/settings/WhatsAppGatewayTab.svelte'),
     event_notifications: () => import('$lib/components/settings/NotificationEventsTab.svelte'),
   };

@@ -4,7 +4,7 @@ const sentinels = vi.hoisted(() => ({
   networkAssetFormModal: { name: 'network-asset-form-modal' },
 }));
 
-vi.mock('./NetworkAssetFormModal.svelte', () => ({
+vi.mock('$lib/components/network/NetworkAssetFormModal.svelte', () => ({
   default: sentinels.networkAssetFormModal,
 }));
 

@@ -22,7 +22,7 @@
     collectionResultTone,
     toIsoUtc,
   } from '$lib/utils/collectionLogInsights';
-  import { loadCollectionExportModule } from '../../../../../(app)/admin/invoices/collection/collectionPageModules';
+  import { loadCollectionExportModule } from '$lib/utils/collectionPageModules';
   import { t } from 'svelte-i18n';
   import {
     AppShell,

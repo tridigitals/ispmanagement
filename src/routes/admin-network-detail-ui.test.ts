@@ -9,7 +9,7 @@ function readSource(path: string) {
 describe('admin network detail UI cleanup', () => {
   it('keeps network detail and import surfaces on clean dark tokens', () => {
     const files = [
-      'src/routes/(app)/admin/network/routers/[id]/RouterDetailDialogs.svelte',
+      'src/lib/components/network/RouterDetailDialogs.svelte',
       'src/routes/(app)/admin/network/routers/[id]/+page.svelte',
       'src/routes/(app)/admin/network/pppoe/import/+page.svelte',
       'src/routes/(app)/admin/network/import/+page.svelte',

@@ -12,10 +12,10 @@ function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<
   };
 }
 
-export const loadPppoeAccountModal = createCachedLoader(async () => {
-  const { default: PppoeAccountModalComponent } = await import('./PppoeAccountModal.svelte');
+export const loadNetworkAssetFormModal = createCachedLoader(async () => {
+  const { default: NetworkAssetFormModalComponent } = await import('$lib/components/network/NetworkAssetFormModal.svelte');
 
   return {
-    PppoeAccountModalComponent: PppoeAccountModalComponent as DeferredComponent,
+    NetworkAssetFormModalComponent: NetworkAssetFormModalComponent as DeferredComponent,
   };
 });

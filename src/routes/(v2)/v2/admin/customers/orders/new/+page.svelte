@@ -21,17 +21,17 @@
   import { getVisibleInternetOrderPackages } from '$lib/utils/internetOrderPackages';
   import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
   import { buildCountryOptions } from '$lib/utils/countryOptions';
-  import { getCustomerSearchViewState } from '../../../../../../(app)/admin/customers/orders/new/customerSearchState';
+  import { getCustomerSearchViewState } from '$lib/utils/customerSearchState';
   import {
     buildPhonePrefixOptions,
     composePhoneNumber,
     inferPhoneFieldState,
-  } from '../../../../../../(app)/admin/customers/orders/new/phoneField';
+  } from '$lib/utils/phoneField';
   import {
     buildBackofficeInstallationOrderPayload,
     inferInitialCustomerMode,
     type OrderWizardDraft,
-  } from '../../../../../../(app)/admin/customers/orders/new/orderWizardState';
+  } from '$lib/utils/orderWizardState';
   import {
     orderPackagePriceLabel,
     validateOrderStep1,

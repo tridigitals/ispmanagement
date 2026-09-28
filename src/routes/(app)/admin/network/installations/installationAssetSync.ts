@@ -4,7 +4,7 @@ import type {
   UpdateNetworkAssetRequest,
 } from '$lib/api/types';
 
-import type { InstallationAssetBindingState } from './installationAssetBinding';
+import type { InstallationAssetBindingState } from '$lib/utils/installationAssetBinding';
 
 const TERMINAL_TYPES = new Set(['ont', 'onu']);
 const PARENT_TYPES = new Set(['olt', 'odc', 'odp', 'splitter', 'fat', 'nap', 'odf']);

@@ -14,17 +14,17 @@
   import { getAdminCustomerNavigation } from '$lib/utils/adminCustomerNavigation';
   import Icon from '$lib/components/ui/Icon.svelte';
   import { buildCountryOptions } from '$lib/utils/countryOptions';
-  import { getCustomerSearchViewState } from './customerSearchState';
+  import { getCustomerSearchViewState } from '$lib/utils/customerSearchState';
   import {
     buildPhonePrefixOptions,
     composePhoneNumber,
     inferPhoneFieldState,
-  } from './phoneField';
+  } from '$lib/utils/phoneField';
   import {
     buildBackofficeInstallationOrderPayload,
     inferInitialCustomerMode,
     type OrderWizardDraft,
-  } from './orderWizardState';
+  } from '$lib/utils/orderWizardState';
   import 'maplibre-gl/dist/maplibre-gl.css';
 
   type Step = 1 | 2 | 3;

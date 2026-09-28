@@ -4,7 +4,7 @@ const sentinels = vi.hoisted(() => ({
   trackerModal: { name: 'dashboard-services-tracker-modal' },
 }));
 
-vi.mock('./DashboardServicesTrackerModal.svelte', () => ({
+vi.mock('$lib/components/dashboard/DashboardServicesTrackerModal.svelte', () => ({
   default: sentinels.trackerModal,
 }));
 

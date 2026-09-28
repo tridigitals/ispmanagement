@@ -17,8 +17,8 @@ describe('remaining route UI cleanup', () => {
       'src/routes/(app)/dashboard/services/order/+page.svelte',
       'src/routes/(app)/dashboard/services/order/internet/+page.svelte',
       'src/routes/(app)/admin/services/ServicesDialogs.svelte',
-      'src/routes/(app)/admin/settings/SettingsEmailTab.svelte',
-      'src/routes/(app)/admin/settings/SettingsPaymentTab.svelte',
+      'src/lib/components/settings/SettingsEmailTab.svelte',
+      'src/lib/components/settings/SettingsPaymentTab.svelte',
     ];
 
     for (const file of files) {

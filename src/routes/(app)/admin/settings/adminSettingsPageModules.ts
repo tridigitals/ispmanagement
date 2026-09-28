@@ -23,7 +23,7 @@ export const loadTenantBillingPlanPanel = createCachedLoader(async () => {
 });
 
 export const loadAdminSettingsEmailTab = createCachedLoader(async () => {
-  const { default: SettingsEmailTabComponent } = await import('./SettingsEmailTab.svelte');
+  const { default: SettingsEmailTabComponent } = await import('$lib/components/settings/SettingsEmailTab.svelte');
 
   return {
     SettingsEmailTabComponent,
@@ -31,7 +31,7 @@ export const loadAdminSettingsEmailTab = createCachedLoader(async () => {
 });
 
 export const loadAdminSettingsPaymentTab = createCachedLoader(async () => {
-  const { default: SettingsPaymentTabComponent } = await import('./SettingsPaymentTab.svelte');
+  const { default: SettingsPaymentTabComponent } = await import('$lib/components/settings/SettingsPaymentTab.svelte');
 
   return {
     SettingsPaymentTabComponent,
@@ -39,7 +39,7 @@ export const loadAdminSettingsPaymentTab = createCachedLoader(async () => {
 });
 
 export const loadAdminSettingsServiceTab = createCachedLoader(async () => {
-  const { default: SettingsServiceTabComponent } = await import('./SettingsServiceTab.svelte');
+  const { default: SettingsServiceTabComponent } = await import('$lib/components/settings/SettingsServiceTab.svelte');
 
   return {
     SettingsServiceTabComponent,

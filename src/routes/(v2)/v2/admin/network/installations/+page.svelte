@@ -48,7 +48,7 @@
     buildInstallationTerminalAssetOptions,
     resolveInstallationAssetBinding,
     validateInstallationAssetBinding,
-  } from '../../../../../(app)/admin/network/installations/installationAssetBinding';
+  } from '$lib/utils/installationAssetBinding';
   import {
     buildInstallationQuickAssetDraftFromContext,
     buildInstallationQuickAssetPayload,
@@ -61,9 +61,9 @@
     filterAndSortInstallationRows,
     type InstallationAssignmentFilter,
     type InstallationSortKey,
-  } from '../../../../../(app)/admin/network/installations/installationTableState';
+  } from '$lib/utils/installationTableState';
   type TileTone = 'neutral' | 'positive' | 'negative' | 'warning';
-  import { buildDefaultInstallationCancelReason } from '../../../../../(app)/admin/network/installations/cancelReason';
+  import { buildDefaultInstallationCancelReason } from '$lib/utils/cancelReason';
   import AppShell from '$lib/components/ds/AppShell.svelte';
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';

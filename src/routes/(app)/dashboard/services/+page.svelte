@@ -17,7 +17,7 @@
   import { appSettings } from '$lib/stores/settings';
   import { toast } from '$lib/stores/toast';
   import { fetchAllRows } from '$lib/utils/fetchAllPages';
-  import { loadDashboardServicesTrackerModal } from './dashboardServicesPageModules';
+  import { loadDashboardServicesTrackerModal } from '$lib/utils/dashboardServicesPageModules';
 
   type StatusFilter = 'all' | 'active' | 'pending_installation' | 'needs_attention';
   type SortBy = 'updated_at' | 'price' | 'status' | 'package_name' | 'location_label';

@@ -8,7 +8,7 @@
   import { api, type CustomerLocation } from '$lib/api/client';
   import Icon from '$lib/components/ui/Icon.svelte';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
-  import { loadLocationFormModal } from './dashboardLocationsPageModules';
+  import { loadLocationFormModal } from '$lib/utils/dashboardLocationsPageModules';
 
   let loading = $state(true);
   let locations = $state<CustomerLocation[]>([]);

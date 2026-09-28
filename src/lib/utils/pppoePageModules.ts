@@ -12,10 +12,10 @@ function createCachedLoader<T>(loader: AsyncModuleLoader<T>): AsyncModuleLoader<
   };
 }
 
-export const loadLocationFormModal = createCachedLoader(async () => {
-  const { default: LocationFormModalComponent } = await import('./LocationFormModal.svelte');
+export const loadPppoeAccountModal = createCachedLoader(async () => {
+  const { default: PppoeAccountModalComponent } = await import('$lib/components/network/PppoeAccountModal.svelte');
 
   return {
-    LocationFormModalComponent: LocationFormModalComponent as DeferredComponent,
+    PppoeAccountModalComponent: PppoeAccountModalComponent as DeferredComponent,
   };
 });

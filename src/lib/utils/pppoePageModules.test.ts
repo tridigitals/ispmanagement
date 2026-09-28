@@ -4,7 +4,7 @@ const sentinels = vi.hoisted(() => ({
   pppoeAccountModal: { name: 'pppoe-account-modal' },
 }));
 
-vi.mock('./PppoeAccountModal.svelte', () => ({
+vi.mock('$lib/components/network/PppoeAccountModal.svelte', () => ({
   default: sentinels.pppoeAccountModal,
 }));
 

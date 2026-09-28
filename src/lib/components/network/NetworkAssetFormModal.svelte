@@ -14,7 +14,7 @@
     type NetworkAssetDetailDraft,
   } from '$lib/utils/networkAssetDetails';
   import type { NetworkAssetListItem } from '$lib/api/client';
-  import { getNetworkAssetFormProfile } from './networkAssetFormProfile';
+  import { getNetworkAssetFormProfile } from '$lib/utils/networkAssetFormProfile';
   import 'maplibre-gl/dist/maplibre-gl.css';
 
   type AssetDraft = {

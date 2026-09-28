@@ -18,12 +18,12 @@
     buildNetworkAssetStats,
     buildNetworkAssetTopologyText,
     filterNetworkAssets,
-  } from './networkAssetsPageState';
-  import { buildNetworkAssetConnectionItems } from './networkAssetConnections';
+  } from '$lib/utils/networkAssetsPageState';
+  import { buildNetworkAssetConnectionItems } from '$lib/utils/networkAssetConnections';
   import {
     formatNetworkAssetCoordinates,
     parseNetworkAssetCoordinates,
-  } from './networkAssetCoordinates';
+  } from '$lib/utils/networkAssetCoordinates';
   import {
     NETWORK_ASSET_TYPES,
     NETWORK_ASSET_TYPE_GROUPS,
@@ -41,8 +41,8 @@
     validateNetworkAssetDetailDraft,
   } from '$lib/utils/networkAssetDetails';
   import { getNetworkAssetPortOccupancySummary } from '$lib/utils/networkAssetOccupancy';
-  import { loadNetworkAssetFormModal } from './networkAssetsPageModules';
-  import { buildNetworkAssetMapUrl } from './networkAssetMapNavigation';
+  import { loadNetworkAssetFormModal } from '$lib/utils/networkAssetsPageModules';
+  import { buildNetworkAssetMapUrl } from '$lib/utils/networkAssetMapNavigation';
   import ConfirmDialog from '$lib/components/ui/ConfirmDialog.svelte';
 
   type DeferredComponent = any;

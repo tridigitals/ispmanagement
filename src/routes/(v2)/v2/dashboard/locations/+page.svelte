@@ -10,7 +10,7 @@
   import { toast } from 'svelte-sonner';
   import { can } from '$lib/stores/auth';
   import { api, type CustomerLocation } from '$lib/api/client';
-  import { loadLocationFormModal } from '../../../../(app)/dashboard/locations/dashboardLocationsPageModules';
+  import { loadLocationFormModal } from '$lib/utils/dashboardLocationsPageModules';
   import PortalShell from '$lib/components/ds/PortalShell.svelte';
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';

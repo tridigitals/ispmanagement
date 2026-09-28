@@ -3,7 +3,7 @@
   import Table from '$lib/components/ui/Table.svelte';
   import Icon from '$lib/components/ui/Icon.svelte';
   import type { Invoice } from '$lib/api/client';
-  import type { CustomerBillingFilter } from './customerBillingState';
+  import type { CustomerBillingFilter } from '$lib/utils/customerBillingState';
 
   let {
     billingFilter = $bindable<CustomerBillingFilter>(),

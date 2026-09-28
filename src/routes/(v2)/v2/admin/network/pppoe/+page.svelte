@@ -45,7 +45,7 @@
   } from '$lib/api/types';
   import { getPppoeAssignmentPayload } from '$lib/utils/pppoePackageAssignment';
   import { createThenApplyPppoeAccount, PppoeCreateApplyError } from '$lib/utils/pppoeCreateProvisioning';
-  import { loadPppoeAccountModal } from '../../../../../(app)/admin/network/pppoe/pppoePageModules';
+  import { loadPppoeAccountModal } from '$lib/utils/pppoePageModules';
 
   import { t } from 'svelte-i18n';
   /* api.mikrotik.routers.list() masih bertipe Promise<any[]> di lib/api/mikrotik.ts;

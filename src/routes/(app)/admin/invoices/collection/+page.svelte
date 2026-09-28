@@ -18,7 +18,7 @@
   import Table from '$lib/components/ui/Table.svelte';
   import { formatDateTime, timeAgo } from '$lib/utils/date';
   import { resolveTenantContext } from '$lib/utils/tenantRouting';
-  import { loadCollectionExportModule } from './collectionPageModules';
+  import { loadCollectionExportModule } from '$lib/utils/collectionPageModules';
 
   type ActiveTab = 'collection' | 'reminders';
 

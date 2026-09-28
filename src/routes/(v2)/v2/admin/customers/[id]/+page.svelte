@@ -57,7 +57,7 @@
     buildCustomerBillingStats,
     filterCustomerBillingRows,
     type CustomerBillingFilter,
-  } from '../../../../../(app)/admin/customers/[id]/customerBillingState';
+  } from '$lib/utils/customerBillingState';
   import AppShell from '$lib/components/ds/AppShell.svelte';
   import PageHeader from '$lib/components/ds/PageHeader.svelte';
   import StatTile from '$lib/components/ds/StatTile.svelte';

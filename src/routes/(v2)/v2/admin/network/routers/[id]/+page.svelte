@@ -34,7 +34,7 @@
     pctUsed,
     snapshotHealthStats,
   } from '$lib/utils/routerDetailInsights';
-  import RouterDetailDialogs from '../../../../../../(app)/admin/network/routers/[id]/RouterDetailDialogs.svelte';
+  import RouterDetailDialogs from '$lib/components/network/RouterDetailDialogs.svelte';
   import { t } from 'svelte-i18n';
   import {
     AppShell,
