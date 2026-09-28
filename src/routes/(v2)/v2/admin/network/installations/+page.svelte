@@ -374,7 +374,19 @@
       detailError = 'Isi teknisi dan jadwal sebelum memulai.';
       return;
     }
-    await mutate(() => api.workOrders.start(active!.id, persistedNotes()), 'Pengerjaan dimulai.');
+    // BUG HISTORIS: memilih teknisi di dropdown hanya mengubah state lokal,
+    // jadi `assigned_to` di DB tetap kosong. Backend menolak start dengan
+    // "Set assignee before starting work order" — padahal user sudah memilih
+    // teknisi. Karena `assign` menerima assigned_to + scheduled_at + notes
+    // sekaligus, simpan rencananya dulu, baru mulai. Satu sumber kebenaran.
+    await mutate(async () => {
+      await api.workOrders.assign(active!.id, {
+        assigned_to: formAssignee,
+        scheduled_at: new Date(formSchedule).toISOString(),
+        notes: persistedNotes(),
+      });
+      return api.workOrders.start(active!.id, persistedNotes());
+    }, 'Pengerjaan dimulai.');
   }
 
   async function completeWo() {
