@@ -79,4 +79,38 @@ describe('tim v2 — status akun di form & aksi Edit di daftar', () => {
     expect(src).toContain('is_active: data.isActive');
     expect(src).toContain('email_verified: data.emailVerified');
   });
+
+  /**
+   * REGRESI 422. `UpdateMemberDto` memakai `#[serde(deny_unknown_fields)]`,
+   * dan backend menolak field tak dikenal dengan 422. `update_team_member_role`
+   * dulu mengirim `id` di samping `memberId`; `safeInvoke` hanya menyaring key
+   * yang persis muncul sebagai `:placeholder` di rute (`/team/:memberId`), jadi
+   * `id` lolos ke body dan setiap Simpan gagal:
+   *
+   *   422 ... id: unknown field `id`, expected one of
+   *   `roleId`, `role_id`, `isActive`, `is_active`, `emailVerified`, `email_verified`
+   *
+   * Ini tidak pernah terlihat sebelumnya karena endpoint PUT itu belum punya
+   * pemanggil di UI — halaman lama hanya menyediakan "change role" lewat jalur
+   * lain. Tombol Edit-lah yang pertama memakainya.
+   */
+  it('tidak mengirim key `id` ke body PUT (penyebab 422 di backend)', () => {
+    const src = readSource(API);
+    const start = src.indexOf("safeInvoke('update_team_member_role'");
+    expect(start, 'pemanggil update_team_member_role harus ada').toBeGreaterThan(-1);
+    const blok = src.slice(start, src.indexOf('}),', start) + 3);
+
+    expect(blok, 'id cukup di path, jangan di body').not.toMatch(/\bid\s*:/);
+    expect(blok, 'memberId dipakai untuk placeholder rute').toMatch(/memberId/);
+  });
+
+  it('`id` TIDAK muncul di body pemanggil PUT/POST mana pun di api/team.ts', () => {
+    const src = readSource(API);
+    // Ambil semua pemanggil PUT/POST, pastikan tak ada key `id:` di dalamnya.
+    const putCalls = src.match(/safeInvoke\('(?:update_team_member_role|add_team_member)'[\s\S]{0,600}?\}\)/g) ?? [];
+    expect(putCalls.length).toBeGreaterThan(0);
+    for (const call of putCalls) {
+      expect(call, `body tidak boleh punya key id: ${call.slice(0, 120)}`).not.toMatch(/[\s{,{]id\s*:/);
+    }
+  });
 });

@@ -37,7 +37,10 @@ export const team = {
   ): Promise<void> =>
     safeInvoke('update_team_member_role', {
       token: getTokenOrThrow(),
-      id: memberId,
+      // HANYA `memberId`. `id` dulu ikut dikirim, padahal `safeInvoke` hanya
+      // menyaring key yang namanya muncul sebagai `:placeholder` di rute
+      // (`/team/:memberId`) — sehingga `id` lolos ke body dan ditolak backend
+      // dengan 422 `unknown field 'id'` (DTO-nya `deny_unknown_fields`).
       memberId,
       roleId: data.roleId,
       is_active: data.isActive,
@@ -48,7 +51,6 @@ export const team = {
   updateRole: (memberId: string, roleId: string): Promise<void> =>
     safeInvoke('update_team_member_role', {
       token: getTokenOrThrow(),
-      id: memberId,
       memberId,
       roleId,
     }),
