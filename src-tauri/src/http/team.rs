@@ -32,12 +32,45 @@ fn enforce_member_role_change_permissions(
     Ok(())
 }
 
+/// Petakan kegagalan `team_service` (bertipe `Err(String)`) ke status HTTP.
+///
+/// Sebelumnya SEMUA kegagalan kecuali yang memuat "not found" menjadi
+/// `AppError::Internal` -> **500**. Padahal banyak di antaranya kesalahan
+/// pemakaian yang seharusnya 4xx dan, lebih penting, pesannya berguna bagi
+/// pengguna. Akibatnya kesalahan seperti "email sudah jadi anggota" tampil
+/// sebagai "500 Internal server error" tanpa petunjuk apa pun.
+///
+/// Catatan: `AppError::Internal` juga menyembunyikan pesan dari klien
+/// (`public_message` -> "Terjadi kesalahan pada server"), jadi menyamakan
+/// keduanya memang menghapus informasi. Di sini kesalahan yang jelas-jelas
+/// 4xx dipetakan eksplisit supaya pesannya sampai ke pengguna.
 fn map_team_service_error(msg: String) -> crate::error::AppError {
-    if msg.to_lowercase().contains("not found") {
-        crate::error::AppError::NotFound(msg)
-    } else {
-        crate::error::AppError::Internal(msg)
+    let low = msg.to_lowercase();
+
+    // "Peran tidak ditemukan" datang dari `.map_err(|_| "Role not found")` dan
+    // sebenarnya kesalahan input, bukan 404 resource.
+    if low.contains("role not found") {
+        return crate::error::AppError::Validation(
+            "Role yang dipilih tidak valid atau sudah tidak ada.".to_string(),
+        );
     }
+
+    if low.contains("not found") || low.contains("already deleted") {
+        return crate::error::AppError::NotFound(msg);
+    }
+
+    // Kesalahan pemakaian -> 4xx dengan pesan asli (aman ditampilkan).
+    if low.contains("already a member") {
+        return crate::error::AppError::Conflict(
+            "Pengguna dengan email tersebut sudah menjadi anggota tim ini.".to_string(),
+        );
+    }
+
+    if low.contains("plan limit") {
+        return crate::error::AppError::Validation(msg);
+    }
+
+    crate::error::AppError::Internal(msg)
 }
 
 // Helper to extract token from headers
@@ -150,7 +183,7 @@ pub async fn add_team_member(
             Some(&ip),
         )
         .await
-        .map_err(crate::error::AppError::Internal)?;
+        .map_err(map_team_service_error)?;
 
     // Broadcast member added event
     state.ws_hub.broadcast(WsEvent::MemberUpdated {
@@ -387,7 +420,45 @@ pub async fn hard_delete_member(
 
 #[cfg(test)]
 mod tests {
-    use super::enforce_member_role_change_permissions;
+    use super::{enforce_member_role_change_permissions, map_team_service_error};
+    use crate::error::AppError;
+
+    /// Seluruh kegagalan `team_service` bertipe `Err(String)` dan dulu dipetakan
+    /// ke `AppError::Internal` -> **500** kecuali yang memuat "not found".
+    /// Akibatnya kesalahan pemakaian yang jelas tampil sebagai
+    /// "500 Internal server error" tanpa petunjuk — pengguna tidak tahu apa
+    /// yang salah, dan pesan aslinya ikut hilang karena `Internal` menyembunyikan
+    /// detail dari klien.
+    #[test]
+    fn kesalahan_pemakaian_jadi_4xx_bukan_500() {
+        // Email yang sudah menjadi anggota -> Conflict, bukan 500.
+        assert!(matches!(
+            map_team_service_error("User is already a member of this team".into()),
+            AppError::Conflict(_)
+        ));
+        // Role tidak valid -> Validation (kesalahan input, bukan resource hilang).
+        assert!(matches!(
+            map_team_service_error("Role not found".into()),
+            AppError::Validation(_)
+        ));
+        // Batas plan -> Validation supaya pesannya terbaca pengguna.
+        assert!(matches!(
+            map_team_service_error("Plan limit reached: Maximum 25 users allowed.".into()),
+            AppError::Validation(_)
+        ));
+    }
+
+    #[test]
+    fn anggota_terhapus_jadi_404_dan_galat_db_tetap_500() {
+        assert!(matches!(
+            map_team_service_error("Member not found or already deleted".into()),
+            AppError::NotFound(_)
+        ));
+        // Galat database/infrastruktur memang 500 — pesannya tidak boleh bocor.
+        let e = map_team_service_error("error returned from database: connection closed".into());
+        assert!(matches!(e, AppError::Internal(_)));
+        assert!(!e.public_message().contains("connection closed"));
+    }
 
     /// Guard ini hanya menolak saat requester **setingkat atau di bawah** target
     /// (`requester_level <= target_level`). Artinya bila level target salah

@@ -393,49 +393,107 @@ impl TeamService {
             .await
             .map_err(|_| "Role not found".to_string())?;
 
-        // 3. Add to tenant_members
-        // Check if already a member
-        let is_member: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND user_id = $2)",
+        // 3. Add to tenant_members.
+        //
+        // `remove_member` melakukan SOFT DELETE (hanya mengisi `deleted_at`),
+        // sedangkan baris `users` sengaja dipertahankan. Jadi email yang pernah
+        // dihapus masih ada di tabel `users` (unique) DAN baris lamanya masih
+        // ada di `tenant_members` dengan `deleted_at` terisi.
+        //
+        // Dulu pemeriksaannya `EXISTS(... user_id = $2)` tanpa memandang
+        // `deleted_at`, sehingga menambahkan kembali email tersebut selalu
+        // ditolak. Karena seluruh kegagalan service dikembalikan `Err(String)`
+        // dan dipetakan ke HTTP 500, pengguna melihat "500 Internal server
+        // error" — bukan pesan yang bisa dimengerti.
+        //
+        // Perilaku yang benar: mengaktifkan kembali keanggotaan lama (pulihkan
+        // `deleted_at`, set ulang role) alih-alih menolak.
+        #[cfg(feature = "postgres")]
+        let existing_member: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT id, deleted_at::text FROM tenant_members WHERE tenant_id = $1 AND user_id = $2 ORDER BY created_at LIMIT 1",
         )
         .bind(tenant_id)
         .bind(&user_id)
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
 
-        if is_member {
-            return Err("User is already a member of this team".to_string());
-        }
+        #[cfg(feature = "sqlite")]
+        let existing_member: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT id, deleted_at FROM tenant_members WHERE tenant_id = ? AND user_id = ? ORDER BY created_at LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(&user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-        let member_id = Uuid::new_v4().to_string();
         let now = Utc::now();
 
-        let query = "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)";
+        let member_id = match existing_member {
+            // Sudah anggota aktif -> tolak dengan pesan yang jelas.
+            Some((_, ref deleted)) if deleted.is_none() => {
+                return Err("User is already a member of this team".to_string());
+            }
+            // Pernah dihapus -> pulihkan keanggotaan lama.
+            Some((id, _)) => {
+                #[cfg(feature = "postgres")]
+                sqlx::query(
+                    "UPDATE tenant_members SET deleted_at = NULL, role = $1, role_id = $2 WHERE id = $3",
+                )
+                .bind(&role_name)
+                .bind(role_id)
+                .bind(&id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
 
-        #[cfg(feature = "postgres")]
-        sqlx::query(query)
-            .bind(&member_id)
-            .bind(tenant_id)
-            .bind(&user_id)
-            .bind(&role_name) // Fallback string role
-            .bind(role_id)
-            .bind(now)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| e.to_string())?;
+                #[cfg(feature = "sqlite")]
+                sqlx::query(
+                    "UPDATE tenant_members SET deleted_at = NULL, role = ?, role_id = ? WHERE id = ?",
+                )
+                .bind(&role_name)
+                .bind(role_id)
+                .bind(&id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
 
-        #[cfg(feature = "sqlite")]
-        sqlx::query(query)
-            .bind(&member_id)
-            .bind(tenant_id)
-            .bind(&user_id)
-            .bind(&role_name)
-            .bind(role_id)
-            .bind(now.to_rfc3339())
-            .execute(&self.pool)
-            .await
-            .map_err(|e| e.to_string())?;
+                id
+            }
+            // Belum pernah jadi anggota -> buat baris baru.
+            None => {
+                let id = Uuid::new_v4().to_string();
+
+                let query = "INSERT INTO tenant_members (id, tenant_id, user_id, role, role_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)";
+
+                #[cfg(feature = "postgres")]
+                sqlx::query(query)
+                    .bind(&id)
+                    .bind(tenant_id)
+                    .bind(&user_id)
+                    .bind(&role_name) // Fallback string role
+                    .bind(role_id)
+                    .bind(now)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                #[cfg(feature = "sqlite")]
+                sqlx::query(query)
+                    .bind(&id)
+                    .bind(tenant_id)
+                    .bind(&user_id)
+                    .bind(&role_name)
+                    .bind(role_id)
+                    .bind(now.to_rfc3339())
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                id
+            }
+        };
 
         // Audit Log
         let details = serde_json::json!({
@@ -462,7 +520,39 @@ impl TeamService {
             )
             .await;
 
-        // Return the created member
+        // Return the created member.
+        //
+        // Status dibaca dari DB, bukan di-hardcode. Sebelumnya selalu
+        // `is_active: true` / `email_verified_at: None` walau pemanggil meminta
+        // akun nonaktif atau sudah terverifikasi — jadi tabel di UI tidak
+        // mencerminkan apa yang baru saja disimpan.
+        #[cfg(feature = "postgres")]
+        let status: (bool, Option<chrono::DateTime<Utc>>) = sqlx::query_as(
+            "SELECT is_active, email_verified_at FROM users WHERE id = $1",
+        )
+        .bind(&user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let status: (bool, Option<chrono::DateTime<Utc>>) = {
+            let raw: (bool, Option<String>) =
+                sqlx::query_as("SELECT is_active, email_verified_at FROM users WHERE id = ?")
+                    .bind(&user_id)
+                    .fetch_one(&self.pool)
+                    .await
+                    .map_err(|e| e.to_string())?;
+            (
+                raw.0,
+                raw.1.and_then(|s| {
+                    chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|d| d.with_timezone(&Utc))
+                }),
+            )
+        };
+
         Ok(TeamMemberWithUser {
             id: member_id,
             user_id,
@@ -471,13 +561,14 @@ impl TeamService {
             role: role_name.clone(),
             role_id: Some(role_id.to_string()),
             role_name: Some(role_name),
-            is_active: true,
+            is_active: status.0,
             created_at: now,
             role_level: None,
+            // Keanggotaan yang dipulihkan mempertahankan `created_at` lama; ini
+            // hanya memengaruhi tampilan "bergabung sejak".
             deleted_at: None,
-            // Anggota baru: belum pernah menyiapkan 2FA, email belum diverifikasi.
             two_factor_enabled: Some(false),
-            email_verified_at: None,
+            email_verified_at: status.1,
         })
     }
 
