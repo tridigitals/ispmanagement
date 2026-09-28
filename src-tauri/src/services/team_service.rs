@@ -47,7 +47,16 @@ impl TeamService {
                 r.name as role_name,
                 u.is_active, 
                 tm.created_at,
-                r.level as role_level,
+                -- Owner lama punya role_id NULL, jadi `r.level` (LEFT JOIN)
+                -- bernilai NULL dan FE membacanya sebagai level 0 — akibatnya
+                -- tombol Edit/Hapus nonaktif untuk SEMUA anggota, termasuk
+                -- bagi pemiliknya sendiri. Ambil level dari role global dengan
+                -- nama yang sama sebagai cadangan.
+                COALESCE(
+                    r.level,
+                    (SELECT r2.level FROM roles r2
+                     WHERE r2.name = tm.role AND r2.tenant_id IS NULL)
+                ) as role_level,
                 tm.deleted_at,
                 u.two_factor_enabled,
                 u.email_verified_at
@@ -70,7 +79,16 @@ impl TeamService {
                 r.name as role_name,
                 u.is_active, 
                 tm.created_at,
-                r.level as role_level,
+                -- Owner lama punya role_id NULL, jadi `r.level` (LEFT JOIN)
+                -- bernilai NULL dan FE membacanya sebagai level 0 — akibatnya
+                -- tombol Edit/Hapus nonaktif untuk SEMUA anggota, termasuk
+                -- bagi pemiliknya sendiri. Ambil level dari role global dengan
+                -- nama yang sama sebagai cadangan.
+                COALESCE(
+                    r.level,
+                    (SELECT r2.level FROM roles r2
+                     WHERE r2.name = tm.role AND r2.tenant_id IS NULL)
+                ) as role_level,
                 tm.deleted_at,
                 u.two_factor_enabled,
                 u.email_verified_at
@@ -88,6 +106,22 @@ impl TeamService {
     }
 
     /// Get user role level
+    /// Level role pengguna di sebuah tenant.
+    ///
+    /// PENTING — fallback Owner. Tenant lama punya `tenant_members.role_id =
+    /// NULL` (dibuat sebelum perbaikan `create_tenant`). `JOIN roles` yang
+    /// biasa (INNER) tidak menghasilkan baris untuk kasus itu, sehingga fungsi
+    /// ini dulu mengembalikan **0** untuk Owner ber-`role_id` NULL.
+    ///
+    /// Akibatnya nyata dan parah: setiap penambahan anggota tim / penggantian
+    /// role membandingkan `requester_level (0) < new_role_level` dan gagal 403
+    /// "Permission denied" — bahkan untuk superadmin, dan tanpa cara pulih
+    /// lewat UI. `auth_service::has_permission` sudah punya fallback ini;
+    /// di sini belum, jadi izin lolos tapi pemeriksaan level menolak.
+    ///
+    /// Fallback sengaja dibatasi `tm.role IN ('Owner','admin')` supaya bug yang
+    /// menulis `role_id = NULL` pada non-owner tidak berubah jadi eskalasi
+    /// hak akses (sama seperti penjaga di `auth_service`).
     pub async fn get_user_role_level(&self, user_id: &str, tenant_id: &str) -> Result<i32, String> {
         #[cfg(feature = "postgres")]
         let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.user_id = $1 AND tm.tenant_id = $2")
@@ -97,6 +131,24 @@ impl TeamService {
             .await
             .map_err(|e| e.to_string())?;
 
+        #[cfg(feature = "postgres")]
+        let level: Option<i32> = match level {
+            Some(l) => Some(l),
+            None => sqlx::query_scalar(
+                r#"SELECT r.level FROM tenant_members tm
+                   CROSS JOIN roles r
+                   WHERE tm.user_id = $1 AND tm.tenant_id = $2
+                     AND tm.role_id IS NULL
+                     AND tm.role IN ('Owner', 'admin')
+                     AND r.name = 'Owner' AND r.tenant_id IS NULL"#,
+            )
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?,
+        };
+
         #[cfg(feature = "sqlite")]
         let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.user_id = ? AND tm.tenant_id = ?")
             .bind(user_id)
@@ -105,10 +157,43 @@ impl TeamService {
             .await
             .map_err(|e| e.to_string())?;
 
+        #[cfg(feature = "sqlite")]
+        let level: Option<i32> = match level {
+            Some(l) => Some(l),
+            None => sqlx::query_scalar(
+                r#"SELECT r.level FROM tenant_members tm
+                   CROSS JOIN roles r
+                   WHERE tm.user_id = ? AND tm.tenant_id = ?
+                     AND tm.role_id IS NULL
+                     AND tm.role IN ('Owner', 'admin')
+                     AND r.name = 'Owner' AND r.tenant_id IS NULL"#,
+            )
+            .bind(user_id)
+            .bind(tenant_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?,
+        };
+
         Ok(level.unwrap_or(0))
     }
 
-    /// Get member role level
+    /// Level role seorang anggota tim.
+    ///
+    /// PENTING — keamanan. Anggota lama punya `role_id = NULL`, sehingga
+    /// `JOIN roles` (INNER) tidak menghasilkan baris dan fungsi ini dulu
+    /// mengembalikan **0** untuk Owner. Itu bukan sekadar kosmetik: guard
+    /// `enforce_member_role_change_permissions` menolak hanya saat
+    /// `requester_level <= target_level`, jadi target yang terbaca 0 bisa
+    /// dilewati oleh pemanggil berlevel berapa pun — artinya seorang staf
+    /// berlevel rendah dapat mengubah role atau menurunkan Owner.
+    ///
+    /// Fallback di bawah menyelesaikan level dari kolom teks `tm.role`
+    /// (`tenant_members.role` selalu terisi, bahkan saat `role_id` NULL),
+    /// dipetakan ke role global dengan nama sama. Hasilnya 0 hanya benar-benar
+    /// terjadi bila perannya memang tidak diketahui — dan pemanggil tetap
+    /// dilindungi oleh aturan "tidak boleh mengubah anggota setingkat atau di
+    /// atasnya".
     pub async fn get_member_role_level(&self, member_id: &str) -> Result<i32, String> {
         #[cfg(feature = "postgres")]
         let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.id = $1")
@@ -117,12 +202,40 @@ impl TeamService {
             .await
             .map_err(|e| e.to_string())?;
 
+        #[cfg(feature = "postgres")]
+        let level: Option<i32> = match level {
+            Some(l) => Some(l),
+            None => sqlx::query_scalar(
+                r#"SELECT r.level FROM tenant_members tm
+                   JOIN roles r ON r.name = tm.role AND r.tenant_id IS NULL
+                   WHERE tm.id = $1 AND tm.role_id IS NULL"#,
+            )
+            .bind(member_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?,
+        };
+
         #[cfg(feature = "sqlite")]
         let level: Option<i32> = sqlx::query_scalar("SELECT r.level FROM tenant_members tm JOIN roles r ON tm.role_id = r.id WHERE tm.id = ?")
             .bind(member_id)
             .fetch_optional(&self.pool)
             .await
             .map_err(|e| e.to_string())?;
+
+        #[cfg(feature = "sqlite")]
+        let level: Option<i32> = match level {
+            Some(l) => Some(l),
+            None => sqlx::query_scalar(
+                r#"SELECT r.level FROM tenant_members tm
+                   JOIN roles r ON r.name = tm.role AND r.tenant_id IS NULL
+                   WHERE tm.id = ? AND tm.role_id IS NULL"#,
+            )
+            .bind(member_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?,
+        };
 
         Ok(level.unwrap_or(0))
     }
@@ -174,6 +287,8 @@ impl TeamService {
         name: &str,
         role_id: &str,
         password: Option<String>,
+        is_active: Option<bool>,
+        email_verified: Option<bool>,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> Result<TeamMemberWithUser, String> {
@@ -218,7 +333,25 @@ impl TeamService {
             let now = Utc::now();
             let new_id = Uuid::new_v4().to_string();
 
-            let query = "INSERT INTO users (id, email, name, password_hash, role, is_active, failed_login_attempts, created_at, updated_at) VALUES ($1, $2, $3, $4, 'user', true, 0, $5, $6)";
+            // Admin menambahkan akun ini secara manual, jadi statusnya boleh
+            // ditentukan di muka: `is_active` (bisa masuk atau tidak) dan
+            // `email_verified_at` (dianggap emailnya sudah diverifikasi).
+            //
+            // Sebelumnya `email_verified_at` TIDAK PERNAH diisi, sehingga akun
+            // yang dibuat admin tertinggal dalam keadaan belum terverifikasi.
+            // Itu memblokir login begitu tenant menyalakan wajib-verifikasi
+            // email (`auth_service`: 400 "email_unverified"), tanpa jalur
+            // pemulihan di UI. Default: aktif + terverifikasi, sesuai
+            // kenyataan bahwa admin membuatnya sendiri (tidak ada email
+            // verifikasi yang pernah dikirim — lihat TODO di bawah).
+            let set_active = is_active.unwrap_or(true);
+            let verified_at = if email_verified.unwrap_or(true) {
+                Some(now)
+            } else {
+                None
+            };
+
+            let query = "INSERT INTO users (id, email, name, password_hash, role, is_active, failed_login_attempts, created_at, updated_at, email_verified_at) VALUES ($1, $2, $3, $4, 'user', $5, 0, $6, $7, $8)";
 
             #[cfg(feature = "postgres")]
             sqlx::query(query)
@@ -226,8 +359,10 @@ impl TeamService {
                 .bind(email)
                 .bind(name)
                 .bind(hash)
+                .bind(set_active)
                 .bind(now)
                 .bind(now)
+                .bind(verified_at)
                 .execute(&self.pool)
                 .await
                 .map_err(|e| e.to_string())?;
@@ -238,8 +373,10 @@ impl TeamService {
                 .bind(email)
                 .bind(name)
                 .bind(hash)
+                .bind(set_active)
                 .bind(now.to_rfc3339())
                 .bind(now.to_rfc3339())
+                .bind(verified_at.map(|t| t.to_rfc3339()))
                 .execute(&self.pool)
                 .await
                 .map_err(|e| e.to_string())?;
@@ -345,11 +482,20 @@ impl TeamService {
     }
 
     /// Update member role
+    /// Perbarui anggota tim. Ketiga parameter bersifat opsional dan
+    /// independen, sehingga form edit yang sama bisa dipakai untuk mengganti
+    /// role saja, mengaktifkan/menonaktifkan akun, atau menandai email sudah
+    /// diverifikasi — tanpa memaksa memuat ulang field lain.
+    ///
+    /// Catatan: `role_id` dulu wajib. Sekarang opsional karena mengubah status
+    /// akun saja tidak boleh menuntut perubahan role.
     pub async fn update_member(
         &self,
         tenant_id: &str,
         member_id: &str,
-        role_id: &str,
+        role_id: Option<&str>,
+        is_active: Option<bool>,
+        email_verified: Option<bool>,
         actor_id: Option<&str>,
         ip_address: Option<&str>,
     ) -> Result<(), String> {
@@ -386,33 +532,72 @@ impl TeamService {
         let (user_id, email, role_name_before, role_id_before) =
             before.ok_or_else(|| "Member not found".to_string())?;
 
-        let role_name: String = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
-            .bind(role_id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|_| "Role not found".to_string())?;
+        // Hanya sentuh tenant_members bila memang ada pergantian role.
+        let role_change: Option<(String, String)> = match role_id {
+            Some(rid) => {
+                let name: String = sqlx::query_scalar("SELECT name FROM roles WHERE id = $1")
+                    .bind(rid)
+                    .fetch_one(&self.pool)
+                    .await
+                    .map_err(|_| "Role not found".to_string())?;
+                Some((name, rid.to_string()))
+            }
+            None => None,
+        };
 
-        let query = "UPDATE tenant_members SET role = $1, role_id = $2 WHERE id = $3";
+        if let Some((role_name, rid)) = role_change.as_ref() {
+            sqlx::query("UPDATE tenant_members SET role = $1, role_id = $2 WHERE id = $3")
+                .bind(role_name)
+                .bind(rid)
+                .bind(member_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
+        }
 
-        sqlx::query(query)
-            .bind(&role_name)
-            .bind(role_id)
-            .bind(member_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| e.to_string())?;
+        // is_active dan email_verified_at hidup di tabel `users`, bukan
+        // `tenant_members`. FK sudah diverifikasi lewat JOIN di atas, jadi
+        // aman memakai user_id hasil lookup tersebut.
+        if is_active.is_some() || email_verified.is_some() {
+            let now = Utc::now();
+            if let Some(active) = is_active {
+                sqlx::query("UPDATE users SET is_active = $1, updated_at = $2 WHERE id = $3")
+                    .bind(active)
+                    .bind(now)
+                    .bind(&user_id)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| e.to_string())?;
+            }
+            if let Some(verified) = email_verified {
+                // Menandai belum terverifikasi juga menghapus jejak waktunya,
+                // supaya kolom tidak menyimpan tanggal yang menyesatkan.
+                let at = if verified { Some(now) } else { None };
+                sqlx::query(
+                    "UPDATE users SET email_verified_at = $1, updated_at = $2 WHERE id = $3",
+                )
+                .bind(at)
+                .bind(now)
+                .bind(&user_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
+            }
+        }
 
         // Audit Log
         let details = serde_json::json!({
-            "message": "Updated team member role",
+            "message": "Updated team member",
             "tenant_id": tenant_id,
             "member_id": member_id,
             "user_id": user_id,
             "email": email,
             "role_name_before": role_name_before,
             "role_id_before": role_id_before,
-            "role_name_after": role_name,
-            "role_id_after": role_id
+            "role_name_after": role_change.as_ref().map(|(n, _)| n.clone()),
+            "role_id_after": role_change.as_ref().map(|(_, id)| id.clone()),
+            "is_active": is_active,
+            "email_verified": email_verified
         })
         .to_string();
         self.audit_service

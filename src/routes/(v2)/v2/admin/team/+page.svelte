@@ -83,11 +83,20 @@
   let inviteName = $state('');
   let inviteRoleId = $state('');
   let invitePassword = $state('');
+  /* Status akun sejak dibuat. Default aktif + terverifikasi karena admin
+     membuat akun ini sendiri dan tidak ada email verifikasi yang dikirim —
+     kalau email dibiarkan belum terverifikasi, akun langsung tidak bisa masuk
+     begitu tenant menyalakan wajib-verifikasi email. */
+  let inviteActive = $state('true');
+  let inviteVerified = $state('true');
   let inviting = $state(false);
 
   let editOpen = $state(false);
   let editTarget = $state<TeamMember | null>(null);
   let editRoleId = $state('');
+  let editRoleTouched = $state(false);
+  let editActive = $state('true');
+  let editVerified = $state('true');
   let savingRole = $state(false);
 
   let removeTarget = $state<TeamMember | null>(null);
@@ -173,8 +182,9 @@
           { key: 'actions', label: '', align: 'right', width: '120px' },
         ]
       : [
-          { key: 'member', label: 'Anggota', width: '32%' },
+          { key: 'member', label: 'Anggota', width: '28%' },
           { key: 'role', label: $t('admin.team.v2.col_role') },
+          { key: 'status', label: $t('admin.team.v2.col_status') },
           { key: 'security', label: $t('admin.team.v2.col_security'), hideSm: true },
           { key: 'joined', label: $t('admin.team.v2.col_joined'), hideSm: true },
           { key: 'actions', label: '', align: 'right', width: '120px' },
@@ -227,12 +237,17 @@
     if (!inviteEmail || !inviteName || !inviteRoleId) return;
     inviting = true;
     try {
-      await api.team.add(inviteEmail, inviteName, inviteRoleId, invitePassword || undefined);
+      await api.team.add(inviteEmail, inviteName, inviteRoleId, invitePassword || undefined, {
+        isActive: inviteActive === 'true',
+        emailVerified: inviteVerified === 'true',
+      });
       toast.success($t('admin.team.v2.t_added'));
       inviteOpen = false;
       inviteEmail = '';
       inviteName = '';
       invitePassword = '';
+      inviteActive = 'true';
+      inviteVerified = 'true';
       await load();
     } catch (e: unknown) {
       toast.error(extractApiErrorMessage(e, 'Gagal menambah anggota'));
@@ -244,21 +259,50 @@
   function bukaEdit(m: TeamMember) {
     editTarget = m;
     editRoleId = m.role_id ?? '';
+    // Role hanya dikirim bila memang diubah — lihat simpanEdit().
+    editRoleTouched = false;
+    editActive = m.is_active === false ? 'false' : 'true';
+    // `email_verified_at` null berarti belum terverifikasi; undefined berarti
+    // kolomnya tidak ikut di-SELECT (dianggap sudah terverifikasi agar tidak
+    // menuduh akun tanpa dasar).
+    editVerified = m.email_verified_at ? 'true' : m.email_verified_at === null ? 'false' : 'true';
     editOpen = true;
   }
 
-  async function simpanRole() {
+  /* Perubahan apa pun yang tertunda? Dipakai untuk menonaktifkan tombol Simpan:
+     menyimpan tanpa perubahan hanya menghasilkan toast palsu. */
+  const adaPerubahan = $derived.by(() => {
+    const t = editTarget;
+    if (!t) return false;
+    const aktifSekarang = t.is_active !== false;
+    const verifSekarang = t.email_verified_at ? true : t.email_verified_at === null ? false : true;
+    return (
+      (editRoleTouched && editRoleId !== (t.role_id ?? '')) ||
+      (editActive === 'true') !== aktifSekarang ||
+      (editVerified === 'true') !== verifSekarang
+    );
+  });
+
+  async function simpanEdit() {
     const target = editTarget;
-    if (!target || !editRoleId) return;
+    if (!target) return;
     savingRole = true;
     try {
-      await api.team.updateRole(target.id, editRoleId);
-      toast.success($t('admin.team.v2.t_role'));
+      // Role hanya dikirim bila benar-benar diubah. Kalau user hanya
+      // menyalakan/mematikan akun atau memverifikasi email, jangan paksa
+      // ikut mengganti role — user bisa saja tidak berhak atas role itu.
+      const gantiRole = editRoleTouched && editRoleId !== (target.role_id ?? '');
+      await api.team.update(target.id, {
+        roleId: gantiRole ? editRoleId : undefined,
+        isActive: editActive === 'true',
+        emailVerified: editVerified === 'true',
+      });
+      toast.success($t('admin.team.v2.t_saved'));
       editOpen = false;
       editTarget = null;
       await load();
     } catch (e: unknown) {
-      toast.error(extractApiErrorMessage(e, 'Gagal memperbarui role'));
+      toast.error(extractApiErrorMessage(e, 'Gagal memperbarui anggota'));
     } finally {
       savingRole = false;
     }
@@ -466,6 +510,22 @@
                 <Badge label={ $t('admin.customers.stats.inactive') } tone="neutral" />
               {/if}
             </div>
+          {:else if c.key === 'status'}
+            <!-- Status akun harus terbaca tanpa membuka form: nonaktif tidak
+                 bisa masuk sama sekali, dan email belum terverifikasi memblokir
+                 login begitu tenant menyalakan wajib-verifikasi. -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              {#if m.is_active === false}
+                <Badge label={ $t('admin.customers.stats.inactive') } tone="neutral" />
+              {:else}
+                <Badge label={ $t('admin.team.v2.st_active') } tone="positive" />
+              {/if}
+              {#if m.email_verified_at === null}
+                <Badge label={ $t('admin.team.v2.st_unverified') } tone="warning" />
+              {:else}
+                <Badge label={ $t('admin.team.v2.st_verified') } tone="neutral" />
+              {/if}
+            </div>
           {:else if c.key === 'security'}
             <div class="flex flex-wrap items-center gap-2 text-sm">
               {#if m.two_factor_enabled === true}
@@ -511,7 +571,7 @@
             {:else}
               <RowActions
                 primary={{
-                  label: $t('admin.team.v2.change_role'),
+                  label: $t('admin.team.v2.edit'),
                   icon: 'cog',
                   onclick: () => bukaEdit(m),
                   disabled: !$can('update', 'team') || !canManage(myLevel, m),
@@ -598,6 +658,22 @@
       onchange={(v) => (invitePassword = v)}
       help="Kosongkan untuk mengirim undangan lewat email."
     />
+    <Field
+      id="inv-active"
+      label={ $t('admin.team.v2.f_account') }
+      type="toggle"
+      value={inviteActive}
+      onchange={(v) => (inviteActive = v)}
+      help={ $t('admin.team.v2.f_account_help') }
+    />
+    <Field
+      id="inv-verified"
+      label={ $t('admin.team.v2.f_verified') }
+      type="toggle"
+      value={inviteVerified}
+      onchange={(v) => (inviteVerified = v)}
+      help={ $t('admin.team.v2.f_verified_help') }
+    />
   </div>
   {#snippet footer()}
     <div class="ds-scope flex justify-end gap-2">
@@ -614,11 +690,11 @@
   {/snippet}
 </Modal>
 
-<Modal bind:show={editOpen} title={ $t('admin.team.v2.edit_role_title') } width="420px">
-  <div class="ds-scope">
+<Modal bind:show={editOpen} title={ $t('admin.team.v2.edit_title') } width="440px">
+  <div class="ds-scope space-y-1">
     {#if editTarget}
       <p class="mb-3 text-sm text-ink-600">
-        {editTarget.name || editTarget.email} — saat ini
+        {editTarget.name || editTarget.email} — { $t('admin.team.v2.edit_current') }
         <span class="font-medium text-ink-900">{editTarget.role_name || editTarget.role}</span>
       </p>
       <Field
@@ -630,8 +706,27 @@
           value: r.id,
           label: `${r.name} (level ${r.level})`,
         }))}
-        onchange={(v) => (editRoleId = v)}
+        onchange={(v) => {
+          editRoleId = v;
+          editRoleTouched = true;
+        }}
         help={ $t('admin.team.v2.role_help') }
+      />
+      <Field
+        id="edit-active"
+        label={ $t('admin.team.v2.f_account') }
+        type="toggle"
+        value={editActive}
+        onchange={(v) => (editActive = v)}
+        help={ $t('admin.team.v2.f_account_help') }
+      />
+      <Field
+        id="edit-verified"
+        label={ $t('admin.team.v2.f_verified') }
+        type="toggle"
+        value={editVerified}
+        onchange={(v) => (editVerified = v)}
+        help={ $t('admin.team.v2.f_verified_help') }
       />
     {/if}
   </div>
@@ -641,8 +736,8 @@
       <Button
         variant="primary"
         loading={savingRole}
-        disabled={!editRoleId || editRoleId === editTarget?.role_id}
-        onclick={() => void simpanRole()}
+        disabled={!adaPerubahan}
+        onclick={() => void simpanEdit()}
       >
         { $t('common.save') }
       </Button>

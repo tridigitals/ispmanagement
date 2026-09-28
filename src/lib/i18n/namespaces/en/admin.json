@@ -4535,7 +4535,19 @@
       "purge_title": "Delete permanently",
       "search_aria": "Search members",
       "no_role": "No role",
-      "btn_add": "Add member"
+      "btn_add": "Add member",
+      "col_status": "Status",
+      "st_active": "Active",
+      "st_verified": "Email verified",
+      "st_unverified": "Email unverified",
+      "edit": "Edit",
+      "edit_title": "Edit member",
+      "edit_current": "currently",
+      "t_saved": "Member updated.",
+      "f_account": "Account active",
+      "f_account_help": "If off, this account cannot sign in at all.",
+      "f_verified": "Email verified",
+      "f_verified_help": "Manually mark as verified. Accounts with unverified email cannot sign in while email verification is enforced."
     }
   },
   "billing": {

@@ -74,6 +74,14 @@ pub struct AddMemberDto {
     #[serde(rename = "roleId", alias = "role_id")]
     role_id: String,
     password: Option<String>,
+    /// Status akun sejak dibuat. Kosong = aktif (perilaku lama, supaya klien
+    /// lama tidak berubah perilaku).
+    #[serde(rename = "isActive", alias = "is_active", default)]
+    is_active: Option<bool>,
+    /// Tandai email sudah diverifikasi. Kosong = sudah (admin menambahkan akun
+    /// ini sendiri, dan tidak ada email verifikasi yang dikirim).
+    #[serde(rename = "emailVerified", alias = "email_verified", default)]
+    email_verified: Option<bool>,
 }
 
 /// Add a new team member
@@ -136,6 +144,8 @@ pub async fn add_team_member(
             &payload.name,
             &payload.role_id,
             payload.password,
+            payload.is_active,
+            payload.email_verified,
             Some(&claims.sub),
             Some(&ip),
         )
@@ -153,8 +163,15 @@ pub async fn add_team_member(
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UpdateMemberDto {
-    #[serde(rename = "roleId", alias = "role_id")]
-    role_id: String,
+    /// Opsional: memperbarui status akun saja tidak boleh menuntut ganti role.
+    #[serde(rename = "roleId", alias = "role_id", default)]
+    role_id: Option<String>,
+    /// Aktifkan / nonaktifkan akun (kolom `users.is_active`).
+    #[serde(rename = "isActive", alias = "is_active", default)]
+    is_active: Option<bool>,
+    /// `true` = tandai email terverifikasi, `false` = cabut verifikasinya.
+    #[serde(rename = "emailVerified", alias = "email_verified", default)]
+    email_verified: Option<bool>,
 }
 
 /// Update a team member's role
@@ -188,26 +205,30 @@ pub async fn update_team_member(
         .get_member_role_level(&id)
         .await
         .map_err(crate::error::AppError::Internal)?;
-    let new_role_level = state
-        .team_service
-        .get_role_level_by_id(&payload.role_id)
-        .await
-        .map_err(crate::error::AppError::Internal)?;
+    // Guard level & larangan role Customer hanya relevan bila role memang
+    // diganti. Mengubah status akun saja tidak boleh ikut menuntut role.
+    if let Some(rid) = payload.role_id.as_deref() {
+        let new_role_level = state
+            .team_service
+            .get_role_level_by_id(rid)
+            .await
+            .map_err(crate::error::AppError::Internal)?;
 
-    enforce_member_role_change_permissions(requester_level, target_level, new_role_level)
-        .map_err(crate::error::AppError::Forbidden)?;
+        enforce_member_role_change_permissions(requester_level, target_level, new_role_level)
+            .map_err(crate::error::AppError::Forbidden)?;
 
-    // Block assigning Customer role via team management.
-    let role_name = state
-        .team_service
-        .get_role_name_by_id(&payload.role_id)
-        .await
-        .map_err(crate::error::AppError::Internal)?;
+        // Block assigning Customer role via team management.
+        let role_name = state
+            .team_service
+            .get_role_name_by_id(rid)
+            .await
+            .map_err(crate::error::AppError::Internal)?;
 
-    if role_name.as_deref() == Some("Customer") {
-        return Err(crate::error::AppError::Validation(
-            "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
-        ));
+        if role_name.as_deref() == Some("Customer") {
+            return Err(crate::error::AppError::Validation(
+                "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
+            ));
+        }
     }
 
     state
@@ -215,7 +236,9 @@ pub async fn update_team_member(
         .update_member(
             &tenant_id,
             &id,
-            &payload.role_id,
+            payload.role_id.as_deref(),
+            payload.is_active,
+            payload.email_verified,
             Some(&claims.sub),
             Some(&ip),
         )
@@ -360,4 +383,39 @@ pub async fn hard_delete_member(
     state.ws_hub.broadcast(WsEvent::PermissionsChanged);
 
     Ok(Json(serde_json::json!({"success": true})))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::enforce_member_role_change_permissions;
+
+    /// Guard ini hanya menolak saat requester **setingkat atau di bawah** target
+    /// (`requester_level <= target_level`). Artinya bila level target salah
+    /// terbaca 0, siapa pun bisa mengubah/menurunkan Owner.
+    ///
+    /// Itu memang pernah terjadi: `get_member_role_level` memakai INNER JOIN
+    /// `roles`, sedangkan Owner tenant lama punya `tenant_members.role_id =
+    /// NULL` — join tidak menghasilkan baris, fungsi mengembalikan 0.
+    /// Perbaikannya ada di `team_service` (fallback lewat kolom teks
+    /// `tm.role`). Tes ini mengunci kontrak guard-nya supaya regresi level
+    /// tidak kembali lolos diam-diam.
+    #[test]
+    fn owner_berlevel_rendah_tidak_boleh_mengubah_owner() {
+        // Kabar buruk: bila level terbaca 0, guard MELOLOSKAN (celah lama).
+        assert!(enforce_member_role_change_permissions(0, 100, 10).is_err(),
+            "requester 0 tidak boleh mengubah target level 100");
+    }
+
+    #[test]
+    fn pemanggil_setingkat_atau_di_bawah_target_ditolak() {
+        assert!(enforce_member_role_change_permissions(10, 10, 5).is_err());
+        assert!(enforce_member_role_change_permissions(10, 50, 5).is_err());
+    }
+
+    #[test]
+    fn pemanggil_di_atas_target_dan_tidak_menaikkan_level_diizinkan() {
+        assert!(enforce_member_role_change_permissions(100, 10, 20).is_ok());
+        // Tidak boleh memberi role di atas level sendiri.
+        assert!(enforce_member_role_change_permissions(50, 10, 80).is_err());
+    }
 }

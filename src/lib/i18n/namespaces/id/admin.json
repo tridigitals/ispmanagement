@@ -4535,7 +4535,19 @@
       "purge_title": "Hapus permanen",
       "search_aria": "Cari anggota",
       "no_role": "Tanpa role",
-      "btn_add": "Tambah anggota"
+      "btn_add": "Tambah anggota",
+      "col_status": "Status",
+      "st_active": "Aktif",
+      "st_verified": "Email terverifikasi",
+      "st_unverified": "Email belum",
+      "edit": "Edit",
+      "edit_title": "Edit anggota",
+      "edit_current": "saat ini",
+      "t_saved": "Anggota diperbarui.",
+      "f_account": "Akun aktif",
+      "f_account_help": "Kalau dimatikan, akun ini tidak bisa masuk sama sekali.",
+      "f_verified": "Email sudah diverifikasi",
+      "f_verified_help": "Tandai manual sebagai terverifikasi. Akun dengan email belum terverifikasi tidak bisa masuk saat wajib-verifikasi aktif."
     }
   },
   "billing": {

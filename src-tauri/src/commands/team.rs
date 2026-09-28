@@ -58,6 +58,8 @@ pub async fn add_team_member(
     name: String,
     role_id: String,
     password: Option<String>,
+    is_active: Option<bool>,
+    email_verified: Option<bool>,
     auth: State<'_, AuthService>,
     team_service: State<'_, TeamService>,
 ) -> Result<TeamMemberWithUser, String> {
@@ -105,6 +107,8 @@ pub async fn add_team_member(
             &name,
             &role_id,
             password,
+            is_active,
+            email_verified,
             Some(&claims.sub),
             Some("127.0.0.1"),
         )
@@ -116,7 +120,9 @@ pub async fn add_team_member(
 pub async fn update_team_member_role(
     token: String,
     member_id: String,
-    role_id: String,
+    role_id: Option<String>,
+    is_active: Option<bool>,
+    email_verified: Option<bool>,
     auth: State<'_, AuthService>,
     team_service: State<'_, TeamService>,
 ) -> Result<(), String> {
@@ -137,23 +143,37 @@ pub async fn update_team_member_role(
         .get_user_role_level(&claims.sub, &tenant_id)
         .await?;
     let target_level = team_service.get_member_role_level(&member_id).await?;
-    let new_role_level = team_service.get_role_level_by_id(&role_id).await?;
-    enforce_member_role_change_permissions(requester_level, target_level, new_role_level)?;
 
-    // Block assigning Customer role via team management
-    let role_name = team_service
-        .get_role_name_by_id(&role_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    // Guard level & larangan role Customer hanya relevan bila role memang
+    // diganti. Menonaktifkan akun atau memverifikasi email tidak boleh
+    // menuntut sekaligus mengganti role.
+    if let Some(rid) = role_id.as_deref() {
+        let new_role_level = team_service.get_role_level_by_id(rid).await?;
+        enforce_member_role_change_permissions(requester_level, target_level, new_role_level)?;
 
-    if role_name.as_deref() == Some("Customer") {
-        return Err(
-            "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
-        );
+        // Block assigning Customer role via team management
+        let role_name = team_service
+            .get_role_name_by_id(rid)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if role_name.as_deref() == Some("Customer") {
+            return Err(
+                "Cannot assign Customer role via team management. Create customer accounts from the Customers module instead.".to_string(),
+            );
+        }
     }
 
     team_service
-        .update_member(&tenant_id, &member_id, &role_id, Some(&claims.sub), None)
+        .update_member(
+            &tenant_id,
+            &member_id,
+            role_id.as_deref(),
+            is_active,
+            email_verified,
+            Some(&claims.sub),
+            None,
+        )
         .await
         .map_err(|e| e.to_string())
 }
