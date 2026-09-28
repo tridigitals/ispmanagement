@@ -18,8 +18,8 @@ describe('dashboard user UI cleanup', () => {
 
   it('keeps dashboard user surfaces free of decorative gradients', () => {
     const files = [
-      'src/routes/(app)/dashboard/+page.svelte',
-      'src/routes/(app)/dashboard/services/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/services/+page.svelte',
     ];
 
     for (const file of files) {

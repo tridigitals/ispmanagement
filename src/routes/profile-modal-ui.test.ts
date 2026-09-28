@@ -9,15 +9,17 @@ function readSource(path: string) {
 describe('profile modal integration', () => {
   it('opens profile from shared shell surfaces instead of navigating to a profile page', () => {
     const files = [
-      'src/routes/(app)/+layout.svelte',
+      'src/routes/(v2)/v2/+layout.svelte',
       'src/lib/components/layout/NotificationDropdown.svelte',
-      'src/routes/(app)/dashboard/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/+page.svelte',
     ];
 
     for (const file of files) {
       const source = readSource(file);
-      if (file === 'src/routes/(app)/+layout.svelte') {
-        expect(source, file).toContain('openProfileModal');
+      if (file === 'src/routes/(v2)/v2/+layout.svelte') {
+        // Layout v2 merender <ProfileModal />; modal membaca store, jadi nama
+        // fungsi openProfileModal memang tidak muncul sebagai string di sini.
+        expect(source, file).toContain('<ProfileModal');
       }
       expect(source, file).not.toContain('/profile?tab=');
     }
@@ -29,7 +31,6 @@ describe('profile modal integration', () => {
     expect(modalSource).toContain('role="dialog"');
     expect(modalSource).toContain('profile-modal-backdrop');
     expect(modalSource).toContain('<ProfileSurface');
-    expect(() => readSource('src/routes/(app)/profile/+page.svelte')).toThrow();
   });
 
   it('lets the profile surface change tabs locally after the modal seeds the initial tab', () => {

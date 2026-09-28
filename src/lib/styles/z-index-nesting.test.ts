@@ -84,9 +84,8 @@ describe('ConfirmDialog selalu di atas modal', () => {
       'lib/components/notifications/NotificationModal.svelte',
       'lib/components/profile/ProfileModal.svelte',
       'lib/components/ui/FileManager.svelte',
-      'routes/(app)/admin/network/olts/[id]/+page.svelte',
-      'routes/(app)/admin/invoices/[id]/+page.svelte',
-      'routes/(app)/admin/roles/+page.svelte',
+      'routes/(v2)/v2/admin/invoices/[id]/+page.svelte',
+      'routes/(v2)/v2/admin/roles/+page.svelte',
       'routes/superadmin/settings/+page.svelte',
     ];
     const confirm = token('z-confirm');
@@ -136,10 +135,15 @@ describe('map picker di atas modal induknya', () => {
     expect(nilai).toBeGreaterThan(token('z-modal'));
   });
 
-  it('(app) OLT: backdrop picker eksplisit di atas modal', () => {
-    const f = 'routes/(app)/admin/network/olts/+page.svelte';
+  it('(v2) OLT: backdrop picker punya z-index eksplisit di atas modal', () => {
+    const f = 'routes/(v2)/v2/admin/network/olts/+page.svelte';
     const src = read(f);
-    expect(src).toContain('map-picker-backdrop');
-    expect(src).toMatch(/\.modal-backdrop\.map-picker-backdrop\s*\{[^}]*z-index:\s*var\(--z-modal-nested/);
+    // Halaman v2 tidak punya blok <style>; z-index ditulis inline. Yang penting:
+    // backdrop picker TIDAK mengandalkan urutan DOM — nilainya eksplisit dan
+    // memakai token nested (> --z-modal).
+    const i = src.indexOf('place-items-center bg-black/40');
+    expect(i, 'markup backdrop picker harus ada').toBeGreaterThan(-1);
+    const sekitar = src.slice(i, i + 200);
+    expect(sekitar).toMatch(/z-index:\s*var\(--z-modal-nested/);
   });
 });

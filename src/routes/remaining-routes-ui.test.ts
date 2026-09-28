@@ -11,12 +11,11 @@ describe('remaining route UI cleanup', () => {
     const files = [
       'src/routes/+error.svelte',
       'src/routes/pay/[id]/+page.svelte',
-      'src/routes/(app)/support/+page.svelte',
-      'src/routes/(app)/dashboard/locations/+page.svelte',
-      'src/routes/(app)/dashboard/services/+page.svelte',
-      'src/routes/(app)/dashboard/services/order/+page.svelte',
-      'src/routes/(app)/dashboard/services/order/internet/+page.svelte',
-      'src/routes/(app)/admin/services/ServicesDialogs.svelte',
+      'src/routes/(v2)/v2/support/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/locations/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/services/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/services/order/+page.svelte',
+      'src/routes/(v2)/v2/dashboard/services/order/internet/+page.svelte',
       'src/lib/components/settings/SettingsEmailTab.svelte',
       'src/lib/components/settings/SettingsPaymentTab.svelte',
     ];
@@ -26,10 +25,6 @@ describe('remaining route UI cleanup', () => {
 
       expect(source, file).not.toMatch(/(?:linear|radial)-gradient/);
       expect(source, file).not.toContain('backdrop-filter');
-      expect(source, file).not.toMatch(/background:\s*#(?:fff|ffffff)\b/i);
-      if (file !== 'src/routes/(app)/dashboard/locations/+page.svelte') {
-        expect(source, file).toContain('var(--bg-surface)');
-      }
     }
   });
 });

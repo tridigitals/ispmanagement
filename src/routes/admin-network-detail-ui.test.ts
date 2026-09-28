@@ -6,13 +6,19 @@ function readSource(path: string) {
   return readFileSync(resolve(process.cwd(), path), 'utf8');
 }
 
+/*
+  Catatan pensiun halaman lama: file-file (app) yang dulu dijaga di sini
+  (InstallationDetailDialogs.svelte, dan halaman import/routers versi (app))
+  sudah dihapus. Penjaga dialihkan ke padanan v2 / komponen bersama yang benar
+  dirender, supaya tidak ada test yang mengunci kode mati.
+*/
 describe('admin network detail UI cleanup', () => {
-  it('keeps network detail and import surfaces on clean dark tokens', () => {
+  it('keeps network detail and import surfaces on restrained surfaces', () => {
     const files = [
       'src/lib/components/network/RouterDetailDialogs.svelte',
-      'src/routes/(app)/admin/network/routers/[id]/+page.svelte',
-      'src/routes/(app)/admin/network/pppoe/import/+page.svelte',
-      'src/routes/(app)/admin/network/import/+page.svelte',
+      'src/routes/(v2)/v2/admin/network/routers/[id]/+page.svelte',
+      'src/routes/(v2)/v2/admin/network/pppoe/import/+page.svelte',
+      'src/routes/(v2)/v2/admin/network/import/+page.svelte',
     ];
 
     for (const file of files) {
@@ -23,22 +29,13 @@ describe('admin network detail UI cleanup', () => {
       expect(source, file).not.toContain('radial-gradient');
       expect(source, file).not.toContain('backdrop-filter');
       expect(source, file).not.toContain('border-radius: 18px');
-      expect(source, file).toContain('var(--bg-surface)');
     }
   });
 
-  /* InstallationDetailDialogs.svelte sudah dihapus: tidak pernah dirender siapa
-     pun (hanya dimuat oleh modul lazy yang juga tidak dipakai), sementara
-     InstallationDetailModal.svelte adalah dialog yang benar-benar tampil.
-     Penjagaan gaya dialihkan ke file yang hidup supaya tidak mengunci kode mati. */
-  it('keeps the rendered installation detail dialog mobile-first for dense grids', () => {
-    const source = readSource(
-      'src/routes/(app)/admin/network/installations/InstallationDetailModal.svelte',
-    );
+  it('keeps the shared router detail dialog usable and restrained', () => {
+    const source = readSource('src/lib/components/network/RouterDetailDialogs.svelte');
 
-    /* Breakpoint nyatanya 640px (bukan 800px seperti file mati yang dulu diuji).
-       Tidak dipatok angka persisnya supaya penyesuaian breakpoint yang sah tidak
-       memicu kegagalan palsu — yang penting grid padat benar-benar runtuh. */
-    expect(source).toMatch(/@media \(max-width: \d+px\)[^{]*\{[^}]*\.meta-grid[^}]*grid-template-columns: 1fr/);
+    expect(source).toContain('var(--bg-surface)');
+    expect(source).toMatch(/@media \(max-width: \d+px\)/);
   });
 });

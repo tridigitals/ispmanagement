@@ -21,6 +21,7 @@
   import { browser } from '$app/environment';
   import { getApiBaseUrl } from '$lib/utils/apiUrl';
   import { normalizeLegacyBasePath, shouldLookupCustomDomain } from '$lib/utils/appBoot';
+  import { v2RedirectFor } from '$lib/utils/legacyV2Redirect';
   import { formatDocumentTitle, isTenantScopedPath, resolvePageTitle } from '$lib/utils/pageTitle';
   import { initTauriStore } from '$lib/utils/tauri-store';
   import { extractApiErrorMessage } from '$lib/api/core';
@@ -285,6 +286,21 @@
   onMount(async () => {
     if (typeof window !== 'undefined') {
       registerGlobalErrorHandlers();
+
+      /* Pensiun halaman lama (app): path lama -> padanan /v2.
+         Dulu tinggal di (app)/+layout.svelte, jadi menghapus pohon (app) akan
+         ikut menghapus redirect-nya dan SEMUA deep-link lama (notifikasi
+         announcement, dsb. yang dibuat announcementRouting.ts tanpa prefix /v2)
+         akan mendarat di layar "not found" — SPA tidak punya server-side redirect.
+         Karena itu redirect hidup di sini (layout root) dan tetap berlaku
+         sebelum halaman apa pun dirender. Hash ikut dipindah supaya deep-link
+         ke tab tertentu (#billing_plan) tetap mendarat di tab yang sama. */
+      const v2Target = v2RedirectFor($page.url.pathname);
+      if (v2Target) {
+        const withHash = window.location.hash ? `${v2Target}${window.location.hash}` : v2Target;
+        goto(withHash, { replaceState: true });
+        return;
+      }
 
       const legacyPath = normalizeLegacyBasePath($page.url.pathname, $page.url.search);
       if (legacyPath) {

@@ -53,7 +53,7 @@ describe('network and shell component UI cleanup', () => {
 
   it('keeps the mobile app shell and topbar constrained to the viewport', () => {
     const topbar = readSource('src/lib/components/layout/Topbar.svelte');
-    const layout = readSource('src/routes/(app)/+layout.svelte');
+    const layout = readSource('src/routes/(v2)/v2/+layout.svelte');
     const notifications = readSource('src/lib/components/layout/NotificationDropdown.svelte');
 
     expect(topbar).toContain('.topbar');
@@ -65,9 +65,14 @@ describe('network and shell component UI cleanup', () => {
     expect(topbar).toMatch(/\.page-title\s*\{[\s\S]*white-space:\s*nowrap/);
     expect(topbar).toMatch(/@media \(max-width:\s*900px\)[\s\S]*\.topbar\s*\{[\s\S]*overflow:\s*visible/);
 
-    expect(layout).toMatch(/\.main-viewport\s*\{[\s\S]*min-width:\s*0/);
-    expect(layout).toMatch(/\.content-surface\s*\{[\s\S]*min-width:\s*0/);
-    expect(layout).toMatch(/\.scroll-area\s*\{[\s\S]*min-width:\s*0/);
+    /* Shell v2 memakai struktur/kelas yang berbeda dari (app) — kelas
+       .main-viewport/.content-surface/.scroll-area tidak ada di sini (shell v2
+       memakai flex + truncate, tanpa min-width:0). Yang tetap wajib ada: topbar
+       memuat UserMenu (Profil & keamanan) dan bell notifikasi, dan modal profil
+       + notifikasi dirender di shell. */
+    expect(layout).toContain('<ProfileModal');
+    expect(layout).toContain('<NotificationModal');
+    expect(layout).toContain('v2-light');
 
     expect(notifications).toMatch(/@media \(max-width:\s*520px\)[\s\S]*max-width:\s*calc\(100dvw - 24px\)/);
     expect(notifications).toMatch(/@media \(max-width:\s*520px\)[\s\S]*box-sizing:\s*border-box/);
