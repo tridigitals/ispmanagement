@@ -70,7 +70,7 @@
   .profile-modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1200;
+    z-index: var(--z-modal, 100);
     background: rgba(8, 12, 19, 0.66);
     display: flex;
     align-items: stretch;

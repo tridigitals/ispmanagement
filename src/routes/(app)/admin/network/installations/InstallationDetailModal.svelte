@@ -343,7 +343,7 @@
 {/if}
 
 <style>
-  .modal-backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg-app) 72%, transparent); display: grid; place-items: center; padding: 20px; z-index: 1000; }
+  .modal-backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg-app) 72%, transparent); display: grid; place-items: center; padding: 20px; z-index: var(--z-modal, 100); }
   .modal { width: min(720px, 100%); max-height: calc(100vh - 40px); overflow: hidden; display: flex; flex-direction: column; border-radius: 14px; background: var(--bg-surface); border: 1px solid var(--border-color); box-shadow: var(--shadow-md); }
   .cancel-modal { width: min(480px, 100%); overflow: auto; display: grid; gap: 14px; padding: 16px; }
   .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }

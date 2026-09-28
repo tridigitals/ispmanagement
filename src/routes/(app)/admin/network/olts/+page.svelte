@@ -693,7 +693,7 @@
 
 <!-- Map Picker Modal — backdrop tidak menutup (salah klik buang pin), tutup via Batal/Gunakan. -->
 {#if showMapPicker}
-  <div class="modal-backdrop" role="presentation">
+  <div class="modal-backdrop map-picker-backdrop" role="presentation">
     <div class="modal map-picker-modal" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="modal-header">
         <h3>{$t('network.olt.pick_location')}</h3>
@@ -947,8 +947,16 @@
     background: rgba(0, 0, 0, 0.6);
     display: grid;
     place-items: center;
-    z-index: 1000;
+    z-index: var(--z-modal, 100);
     padding: 24px;
+  }
+
+  /* Map picker dibuka DARI DALAM modal form OLT, jadi backdrop-nya harus di ATAS
+     backdrop modal induk. Sebelumnya keduanya 1000 dan urutannya hanya kebetulan
+     benar karena picker dirender belakangan — fragile: begitu markup disusun
+     ulang, picker tertutup di belakang modal. */
+  .modal-backdrop.map-picker-backdrop {
+    z-index: var(--z-modal-nested, 110);
   }
 
   .modal {

@@ -616,7 +616,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.7);
-    z-index: 100;
+    z-index: var(--z-modal, 100);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -749,7 +749,14 @@
 <!-- Modal pemilih lokasi peta -->
 {#if showMapPicker}
   <!-- svelte-ignore a11y_interactive_supports_focus, a11y_click_events_have_key_events -->
-  <div class="fixed inset-0 z-[70] grid place-items-center bg-black/40 p-4" onclick={() => (showMapPicker = false)} role="presentation">
+  <!-- z-index eksplisit > modal induk (--z-modal). Sebelumnya z-[70], DI BAWAH
+       modal (100), sehingga map picker tertutup modal form yang membukanya. -->
+  <div
+    class="fixed inset-0 grid place-items-center bg-black/40 p-4"
+    style="z-index: var(--z-modal-nested, 110)"
+    onclick={() => (showMapPicker = false)}
+    role="presentation"
+  >
     <div class="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
       <div class="flex items-center justify-between border-b border-ink-200 px-5 py-3">
         <h3 class="font-semibold text-ink-900">{ $t('network.olt.v2.pick_map') }</h3>

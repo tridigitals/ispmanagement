@@ -37,6 +37,43 @@
   --radius-lg: 12px;
   --border-radius: var(--radius-md);
 
+  /* ---- Skala z-index ---------------------------------------------------
+     Menggantikan angka-angka lepas yang sebelumnya tersebar (40, 51, 56, 60,
+     68-75, 90, 95, 100, 120, 150, 200, 1000, 1100, 1200, 9999, 10000).
+
+     Masalah yang diperbaiki: dua overlay yang SALING BERSARANG (mis. map
+     picker yang dibuka dari dalam modal form, atau dialog konfirmasi yang
+     dibuka dari dalam modal notifikasi) harus punya urutan yang PASTI. Kalau
+     tidak, hasilnya bergantung pada urutan render DOM — dan begitu markup
+     disusun ulang, dialog yang seharusnya di atas malah tertutup di belakang
+     modal induknya.
+
+     ATURAN: overlay bersarang selalu ambil step yang LEBIH TINGGI. Jangan
+     pakai angka lepas lagi; pakai var(--z-*) di bawah.
+
+       1   isi di dalam kartu (badge, checkbox kartu)
+       60  backdrop drawer/sheet
+       70  drawer / panel samping (WallboardFullDialog, dsb)
+       90  dialog yg boleh dibuka dari drawer
+       100 lapisan modal standar (Modal.svelte — SATU pintu utk semua modal)
+       110 modal di atas modal
+       120 dialog konfirmasi (ConfirmDialog) — selalu di atas modal
+       130 dialog konfirmasi yg dibuka dari dialog konfirmasi
+       200 elemen tetap aplikasi (sidebar, FAB) — di atas isi, di bawah overlay
+       400-500 overlay aplikasi (lightbox, upload) — selalu paling atas isi
+     ---------------------------------------------------------------------- */
+  --z-base: 1;
+  --z-drawer-backdrop: 60;
+  --z-drawer: 70;
+  --z-dialog-in-drawer: 90;
+  --z-modal: 100;
+  --z-modal-nested: 110;
+  --z-confirm: 120;
+  --z-confirm-nested: 130;
+  --z-app-chrome: 200;
+  --z-app-overlay: 400;
+  --z-critical-overlay: 500;
+
   --shadow-sm: 0 8px 22px rgba(0, 0, 0, 0.18);
   --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.26);
   --shadow-lg: var(--shadow-md);

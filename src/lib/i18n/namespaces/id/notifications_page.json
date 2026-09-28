@@ -27,12 +27,12 @@
     "confirm": "Hapus semua"
   },
   "delete_confirm": {
-    "message": "Message",
-    "title": "Judul"
+    "title": "Hapus notifikasi",
+    "message": "Notifikasi ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan."
   },
   "mark_all_confirm": {
-    "message": "Message",
-    "title": "Judul"
+    "title": "Tandai semua dibaca",
+    "message": "Semua notifikasi akan ditandai sudah dibaca. Anda masih bisa membukanya kembali."
   },
   "mark_as_read": "Tandai Dibaca"
 }

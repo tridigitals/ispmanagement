@@ -958,7 +958,7 @@
     background: rgba(0, 0, 0, 0.6);
     display: grid;
     place-items: center;
-    z-index: 1000;
+    z-index: var(--z-modal, 100);
     padding: 24px;
   }
 

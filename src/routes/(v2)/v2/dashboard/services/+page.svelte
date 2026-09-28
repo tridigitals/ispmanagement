@@ -762,7 +762,7 @@
   .tracker-loading {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: var(--z-modal, 100);
     display: flex;
     align-items: center;
     justify-content: center;

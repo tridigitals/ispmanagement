@@ -440,7 +440,8 @@
   .notif-modal-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1200;
+    /* Modalnya sendiri; ConfirmDialog-nya di atas ini (--z-confirm). */
+    z-index: var(--z-modal, 100);
     background: rgba(8, 12, 19, 0.66);
     display: flex;
     align-items: stretch;

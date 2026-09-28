@@ -228,7 +228,7 @@
     box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
-    z-index: 100;
+    z-index: var(--z-app-chrome, 200);
     animation: dropdownPop 0.14s ease-out;
     min-width: 0;
     max-width: 100%;

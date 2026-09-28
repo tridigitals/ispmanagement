@@ -267,7 +267,7 @@
   .lightbox-overlay {
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    z-index: var(--z-app-overlay, 400);
     background-color: color-mix(in srgb, var(--bg-app) 92%, black);
     display: flex;
     align-items: center;

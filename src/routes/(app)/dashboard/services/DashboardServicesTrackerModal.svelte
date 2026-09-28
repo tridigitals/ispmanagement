@@ -311,7 +311,7 @@
     background: rgba(2, 6, 18, 0.72);
     display: grid;
     place-items: center;
-    z-index: 1200;
+    z-index: var(--z-modal, 100);
     padding: 18px;
   }
 

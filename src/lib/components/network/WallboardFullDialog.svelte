@@ -412,7 +412,7 @@
   .full-overlay {
     position: fixed;
     inset: 0;
-    z-index: 70;
+    z-index: var(--z-drawer, 70);
     display: grid;
     place-items: center;
     animation: overlay-in 240ms ease both;
@@ -726,7 +726,7 @@
   .metrics-tooltip.floating {
     position: fixed;
     margin-top: 0;
-    z-index: 120;
+    z-index: var(--z-modal-nested, 110);
     pointer-events: none;
     transform: translate(0, 0);
     box-shadow:

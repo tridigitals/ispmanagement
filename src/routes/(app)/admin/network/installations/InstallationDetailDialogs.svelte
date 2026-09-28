@@ -987,7 +987,7 @@
     display: grid;
     place-items: center;
     padding: 20px;
-    z-index: 1000;
+    z-index: var(--z-modal, 100);
   }
   .modal {
     width: min(900px, 100%);

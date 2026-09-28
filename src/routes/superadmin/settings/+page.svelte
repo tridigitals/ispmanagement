@@ -1449,7 +1449,7 @@
     padding: clamp(1rem, 3vw, 1.5rem) 1rem;
     background: var(--bg-surface);
     border-top: 1px solid var(--border-color);
-    z-index: 100;
+    z-index: var(--z-modal, 100);
     margin-left: -1rem;
     margin-right: -1rem;
     margin-bottom: -1rem;

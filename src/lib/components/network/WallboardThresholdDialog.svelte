@@ -133,7 +133,7 @@
   .threshold-overlay {
     position: fixed;
     inset: 0;
-    z-index: 95;
+    z-index: var(--z-dialog-in-drawer, 90);
     display: grid;
     place-items: center;
   }

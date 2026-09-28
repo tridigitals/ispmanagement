@@ -328,7 +328,7 @@
     position: fixed;
     inset: 0;
     background: transparent;
-    z-index: 999;
+    z-index: var(--z-app-chrome, 200);
     border: 0;
     padding: 0;
   }
@@ -343,7 +343,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     box-shadow: var(--shadow-md);
-    z-index: 1000;
+    z-index: var(--z-app-chrome, 200);
     display: flex;
     flex-direction: column;
     max-height: 80vh;

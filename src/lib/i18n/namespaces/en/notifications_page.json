@@ -27,12 +27,12 @@
     "confirm": "Clear all"
   },
   "delete_confirm": {
-    "message": "Message",
-    "title": "Title"
+    "title": "Delete notification",
+    "message": "This notification will be permanently deleted. This action cannot be undone."
   },
   "mark_all_confirm": {
-    "message": "Message",
-    "title": "Title"
+    "title": "Mark all as read",
+    "message": "All notifications will be marked as read. You can still open them again."
   },
   "mark_as_read": "Mark As Read"
 }

@@ -1128,7 +1128,7 @@
       white-space: nowrap;
       box-shadow: var(--shadow-md);
       font-size: 0.85rem;
-      z-index: 200;
+      z-index: var(--z-app-chrome, 200);
     }
   }
 

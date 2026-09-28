@@ -91,7 +91,7 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     box-shadow: var(--shadow-md);
-    z-index: 10000;
+    z-index: var(--z-critical-overlay, 500);
     overflow: hidden;
     font-family: var(--font-family);
   }

@@ -2885,7 +2885,7 @@
     display: grid;
     place-items: center;
     padding: 20px;
-    z-index: 1000;
+    z-index: var(--z-modal, 100);
   }
   @media (max-width: 768px) {
     .quick-assign-summary {

@@ -104,7 +104,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 101;
+    z-index: var(--z-app-chrome, 200);
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
@@ -117,7 +117,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-        z-index: 102;
+        z-index: var(--z-app-chrome, 200);
     display: flex;
     align-items: flex-end;
     justify-content: center;
