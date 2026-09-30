@@ -1868,7 +1868,10 @@ impl CustomerService {
             customer.name = name;
         }
         if let Some(ref email) = dto.email {
-            let v = email.trim().to_string();
+            // Normalkan (trim + lowercase) supaya respons update sama dengan
+            // yang tersimpan di DB — trigger DB juga menormalkan, tapi struct
+            // in-memory inilah yang dikembalikan ke pemanggil.
+            let v = crate::services::email_normalize::normalize_email(email);
             customer.email = if v.is_empty() { None } else { Some(v) };
         }
         if let Some(phone) = dto.phone {

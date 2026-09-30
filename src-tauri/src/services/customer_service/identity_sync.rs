@@ -234,7 +234,15 @@ pub(crate) async fn sync_customer_identity_to_user(
     new_phone: Option<&str>,
     actor_id: Option<&str>,
 ) -> AppResult<()> {
-    let email = new_email.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+    // Email dinormalkan (trim + lowercase) DI SINI, bukan hanya dibersihkan
+    // spasinya. Fungsi ini menulis ke `users.email` dan `customers.email`
+    // sekaligus — dua-duanya kolom email. Lowercase di sumber membuat nilai
+    // yang di-UPDATE, nilai yang dicatat di jejak audit, dan nilai yang
+    // dikembalikan ke pemanggil semuanya sama; kalau hanya kolom yang di-lower
+    // di SQL, audit trail bisa mencatat bentuk huruf yang tidak pernah tersimpan.
+    let email = new_email
+        .map(crate::services::email_normalize::normalize_email)
+        .filter(|v| !v.is_empty());
     let phone = new_phone.map(|v| v.trim().to_string());
 
     if email.is_none() && phone.is_none() {
@@ -340,7 +348,11 @@ pub(crate) async fn sync_user_identity_to_customers(
     new_phone: Option<&str>,
     actor_id: Option<&str>,
 ) -> AppResult<u64> {
-    let email = new_email.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+    // Sama seperti arah sebaliknya: lowercase di sumber supaya nilai yang
+    // ditulis, di-audit, dan dipakai untuk pencarian unik tidak berbeda bentuk.
+    let email = new_email
+        .map(crate::services::email_normalize::normalize_email)
+        .filter(|v| !v.is_empty());
     let phone = new_phone.map(|v| v.trim().to_string());
 
     if email.is_none() && phone.is_none() {

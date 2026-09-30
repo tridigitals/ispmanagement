@@ -52,6 +52,14 @@ impl Customer {
         is_active: Option<bool>,
         customer_number: Option<String>,
     ) -> Self {
+        // Email pelanggan dinormalkan di sini (trim + lowercase) supaya nilai
+        // yang dikembalikan ke pemanggil — dan karenanya yang tampil di UI —
+        // sama dengan yang benar-benar tersimpan. Trigger database
+        // (`trg_customers_lower_email`) sudah menormalkan saat INSERT, tapi
+        // respons API dibangun dari struct in-memory ini, bukan hasil baca ulang;
+        // tanpa normalisasi di sini UI sempat menampilkan huruf besar sampai
+        // halaman dimuat ulang.
+        let email = email.map(|value| crate::services::email_normalize::normalize_email(&value));
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
@@ -685,4 +693,70 @@ pub struct CustomerRegistrationInviteSummary {
     pub utilization_percent: f64,
     pub created_last_30d: i64,
     pub used_last_30d: i64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Customer;
+
+    /// Email pelanggan harus tersimpan dalam satu bentuk. Trigger database
+    /// (`trg_customers_lower_email`) menormalkan saat INSERT, tapi struktur
+    /// in-memory inilah yang dikembalikan ke API — jadi kalau normalisasi hanya
+    /// ada di DB, UI sempat menampilkan huruf besar sampai halaman dimuat ulang.
+    #[test]
+    fn email_pelanggan_dinormalkan_saat_dibuat() {
+        let c = Customer::new(
+            "tenant-1".into(),
+            "Budi".into(),
+            Some("  Budi.Santoso@Gmail.CoM  ".into()),
+            Some("08123456789".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(c.email.as_deref(), Some("budi.santoso@gmail.com"));
+    }
+
+    #[test]
+    fn email_pelanggan_yang_sudah_kecil_tidak_berubah() {
+        let c = Customer::new(
+            "tenant-1".into(),
+            "Budi".into(),
+            Some("budi@gmail.com".into()),
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(c.email.as_deref(), Some("budi@gmail.com"));
+    }
+
+    #[test]
+    fn pelanggan_tanpa_email_tetap_none() {
+        let c = Customer::new(
+            "tenant-1".into(),
+            "Budi".into(),
+            None,
+            Some("08123456789".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(c.email, None);
+    }
+
+    /// Nomor telepon TIDAK ikut di-lowercase — hanya email.
+    #[test]
+    fn nomor_telepon_tidak_ikut_dinormalkan() {
+        let c = Customer::new(
+            "tenant-1".into(),
+            "Budi".into(),
+            None,
+            Some(" 0812ABC  ".into()),
+            None,
+            None,
+            None,
+        );
+        assert_eq!(c.phone.as_deref(), Some(" 0812ABC  "));
+    }
 }
