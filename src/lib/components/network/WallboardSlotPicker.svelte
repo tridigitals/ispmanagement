@@ -53,7 +53,7 @@
 </script>
 
 <div class="picker-overlay" role="dialog" aria-modal="true">
-  <button class="picker-backdrop" type="button" onclick={onClose} aria-label={$t('common.close')}></button>
+  <button class="picker-backdrop" type="button" aria-label={$t('common.close')}></button>
   <div class="picker">
     <div class="picker-head">
       <h3>

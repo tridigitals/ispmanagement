@@ -133,7 +133,7 @@
 </script>
 
 <div class="full-overlay" role="dialog" aria-modal="true">
-  <button class="full-backdrop" type="button" onclick={onClose} aria-label={$t('common.close')}></button>
+  <button class="full-backdrop" type="button" aria-label={$t('common.close')}></button>
   <div class="full">
     <div class="full-head">
       <div class="full-titles">

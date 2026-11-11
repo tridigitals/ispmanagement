@@ -39,7 +39,6 @@
   <button
     class="threshold-backdrop"
     type="button"
-    onclick={onClose}
     aria-label={$t('common.close')}
   ></button>
   <div class="threshold">

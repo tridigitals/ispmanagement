@@ -9,11 +9,6 @@
     closeProfileModal();
   }
 
-  function handleBackdropClick() {
-    if ($profileModal.locked) return;
-    requestClose();
-  }
-
   function handleDialogKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape' && !$profileModal.locked) {
       event.preventDefault();
@@ -26,7 +21,6 @@
   <div
     class="profile-modal-backdrop"
     role="presentation"
-    onclick={handleBackdropClick}
     onkeydown={handleDialogKeydown}
     tabindex="-1"
   >

@@ -22,7 +22,7 @@
 </script>
 
 {#if open}
-  <button class="drawer-backdrop" type="button" onclick={onClose} aria-label={$t('mixradius.import_wizard.batch_report.close')}></button>
+  <button class="drawer-backdrop" type="button" aria-label={$t('mixradius.import_wizard.batch_report.close')}></button>
   <aside class="drawer" aria-label={$t('mixradius.import_wizard.batch_report.title')}>
     <div class="drawer-head">
       <div>

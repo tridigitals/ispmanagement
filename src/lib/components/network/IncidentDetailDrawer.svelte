@@ -143,7 +143,7 @@
 </script>
 
 {#if open && incident}
-  <button class="drawer-backdrop" type="button" onclick={onClose} aria-label={$t('common.close')}></button>
+  <button class="drawer-backdrop" type="button" aria-label={$t('common.close')}></button>
   <aside class="drawer" aria-label={$t('common.details')}>
     <div class="drawer-head">
       <div>

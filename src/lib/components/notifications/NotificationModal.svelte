@@ -213,10 +213,6 @@
     closeNotificationModal();
   }
 
-  function handleBackdropClick() {
-    requestClose();
-  }
-
   function handleDialogKeydown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -229,7 +225,6 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="notif-modal-backdrop"
-    onclick={handleBackdropClick}
     onkeydown={handleDialogKeydown}
   >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
