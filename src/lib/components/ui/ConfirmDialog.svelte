@@ -62,7 +62,7 @@
   <div
     class="confirm-backdrop"
     role="presentation"
-    onclick={(e) => e.target === e.currentTarget && handleCancel()}
+    onclick={(e) => e.stopPropagation()}
   >
     <div
       class="confirm-card"

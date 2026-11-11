@@ -27,9 +27,8 @@
     class="asset-customer-drop-modal-backdrop"
     role="presentation"
     tabindex="-1"
-    onclick={onClose}
     onkeydown={(event) => {
-      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+      if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
       }

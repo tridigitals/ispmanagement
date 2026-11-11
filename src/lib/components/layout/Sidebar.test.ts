@@ -24,4 +24,24 @@ describe('sidebar icon registry', () => {
     expect(resolvedIconName).not.toBe('help-circle');
     expect(hasLucideIconModule(resolvedIconName)).toBe(true);
   });
+
+  it('admin panel jump button targets /v2/admin, not the dead /admin route', () => {
+    const source = readSource('src/lib/components/layout/Sidebar.svelte');
+    // Route (app)/admin/** sudah dihapus sejak cutover v2. Jika masih menunjuk
+    // `/admin`, URL jatuh ke route dinamis `[tenant]` → salah redirect balik ke
+    // superadmin (klik tombol admin panel = gagal masuk admin).
+    expect(source).toContain("const adminPanelHref = '/v2/admin'");
+    expect(source).not.toContain("const adminPanelHref = '/admin'");
+  });
+
+  it('admin/user toggle navigates to /v2/admin, not dead /admin', () => {
+    const source = readSource('src/lib/components/layout/Sidebar.svelte');
+    // Toggle admin↔user pada sidebar tenant harus menunjuk /v2/admin
+    // (bukan /admin yang sudah mati). Catatan: `${tenantPrefix}/admin/...`
+    // di `adminMenuSections` adalah item menu yang sah, jadi kami tidak
+    // melarang seluruh substring — kami memeriksa string navigasi onclick-nya.
+    expect(source).toContain(
+      "goto(isUrlAdmin ? `${tenantPrefix}/dashboard` : `${tenantPrefix}/v2/admin`)",
+    );
+  });
 });

@@ -132,10 +132,10 @@
 <div
   class="lightbox-overlay"
   transition:fade={{ duration: 200 }}
-  onclick={close}
+  onclick={(e) => e.stopPropagation()}
   role="button"
   tabindex="0"
-  onkeydown={(e) => (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') && close()}
+  onkeydown={(e) => e.key === 'Escape' && close()}
 >
   <!-- Top Bar -->
   <div

@@ -593,7 +593,9 @@
   });
 
   // When inside `/superadmin`, we still want a quick jump back to the tenant admin panel.
-  const adminPanelHref = '/admin';
+  // NOTE: route `(app)/admin/**` sudah dihapus sejak cutover v2 — `/admin` kini jatuh ke
+  // route dinamis `[tenant]` dan akan salah redirect. Halaman admin hidup di `/v2/admin`.
+  const adminPanelHref = '/v2/admin';
 
   function navigate(href: string) {
     goto(href);
@@ -737,7 +739,9 @@
     {#if $isAdmin && !isUrlSuperadmin}
       <button
         class="context-btn"
-        onclick={() => goto(isUrlAdmin ? `${tenantPrefix}/dashboard` : `${tenantPrefix}/admin`)}
+        onclick={() =>
+          goto(isUrlAdmin ? `${tenantPrefix}/dashboard` : `${tenantPrefix}/v2/admin`)
+        }
         aria-label={isUrlAdmin
           ? $t('sidebar.user_view') || 'User View'
           : $t('sidebar.admin_panel') || 'Admin Panel'}
